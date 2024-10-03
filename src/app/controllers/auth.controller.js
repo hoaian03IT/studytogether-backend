@@ -1,11 +1,42 @@
 const jwt = require("jsonwebtoken");
 const { pool } = require("../../connectDB.js");
 const { generateRefreshToken } = require("../../utils/generateToken.js");
+const { sequelize } = require("../../connectDB");
+const bcrypt = require('bcrypt');
+
+const User = require('../models/user.js');
 
 class Auth {
     async login(req, res) {}
 
-    async register(req, res) {}
+    async register(req, res) {
+        console.log("Đang gọi hàm đăng ký nè~", req.body);
+        const email = req.body.email
+        const userName = req.body.username
+        const password = req.body.password
+        const hashedPassword = await bcrypt.hash(password, 10);
+    
+        sequelize
+          .sync()
+          .then(() => {
+            User.create({
+              email: email,
+              username: userName,
+              password: hashedPassword,
+            })
+              .then((result) => {
+                res.status(201).json({ message: "User created successfully", user: result });
+              })
+              .catch((error) => {
+                console.error("Failed to create a new record : ", error);
+                res.status(401).json({ message: error.message });
+              });
+          })
+          .catch((error) => {
+            console.error("Unable to create table : ", error);
+            res.status(401).json({ message: error.message });
+          });
+    }
 
     async logout(req, res) {}
 
