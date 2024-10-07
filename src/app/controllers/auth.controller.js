@@ -138,37 +138,37 @@ class Auth {
 
     async refreshToken(req, res) {
         try {
-            const refreshToken = req.cookies["refresh-token"];
-
-            let userId;
-            // lấy id từ token
-            try {
-                const r = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-                userId = r.userId;
-            } catch (err) {
-                userId = null;
-                res.status(401).json({ message: "Unauthorized 4" });
-            }
-
             const conn = await pool.getConnection();
-            // xoá token hiện tại
-            let [r] = await conn.query(`delete from users where \`user id\`=${userId} and token=${refreshToken}`);
-            if (r.affectedRows === 0) {
-                return res.status(401).json({ message: "Token không hợp lệ" });
-            }
+            // lấy token từ cookies client
+            const refreshToken = req.cookies["token"];
 
-            [r] = await conn.query(`select \`user id\`, email from users where \`user id\`=${userId}`);
+            jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err, userInfo) => {
+                if (err) {
+                    return res.status(401).json({ message: err.message });
+                }
 
-            const userInfo = { userId, email: r[0]["email"] };
-            const newRefreshToken = generateRefreshToken(userInfo);
-            const accessToken = generateAccessToken(userInfo);
-            await conn.query(`call SP_InsertNewToken(${userId}, '${newRefreshToken}', '123')`);
-            res.cookie("refresh-token", newRefreshToken, {
-                maxAge: 1000 * 60 * 60 * 24 * 30,
-                httpOnly: true,
-                secure: true,
+                // xoá token hiện tại
+                conn.query("DELETE FROM `refresh tokens` WHERE `user id`=? AND token=?", [
+                    userInfo.userID,
+                    refreshToken,
+                ]).catch((err) => {
+                    res.status(400).json({ message: err.message });
+                });
+
+                const {
+                    accessToken,
+                    refreshToken: newRefreshToken,
+                    expiredAt,
+                } = await generateTokensAndStore(userInfo, conn);
+                res.cookie("token", newRefreshToken, {
+                    maxAge: expiredAt,
+                    httpOnly: true,
+                    secure: false,
+                });
+                res.status(200).json({ token: accessToken });
             });
-            res.status(200).json({ token: accessToken });
+
+            pool.releaseConnection(conn);
         } catch (error) {
             res.status(401).json({ message: error.message });
         }
