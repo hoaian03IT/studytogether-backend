@@ -11,7 +11,7 @@ router.use(timeLog);
 
 router.post("/login", AuthController.login);
 router.post("/register", AuthController.register);
-router.post("/logout", AuthController.logout);
-router.get("/refresh-token", /*[authenticate],*/ AuthController.refreshToken);
+router.post("/logout", [authenticate], AuthController.logout);
+router.get("/refresh-token", [authenticate], AuthController.refreshToken);
 
 module.exports = router;

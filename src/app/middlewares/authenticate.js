@@ -1,3 +1,5 @@
+const jwt = require("jsonwebtoken");
+
 function authenticate(req, res, next) {
     try {
         const textInsideToken = "BearerToken";

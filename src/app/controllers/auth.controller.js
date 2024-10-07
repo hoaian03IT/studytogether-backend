@@ -32,7 +32,7 @@ const generateTokensAndStore = async (userInfo, conn) => {
     // save refresh token to database
     conn.query("INSERT INTO `refresh tokens` (`user id`, token, `expired at`) VALUE (?, ?, ?);", [
         userInfo["user id"],
-        accessToken,
+        refreshToken,
         expiredAt,
     ]).catch((err) => {
         throw new Error(err);
@@ -118,7 +118,23 @@ class Auth {
         }
     }
 
-    async logout(req, res) {}
+    async logout(req, res) {
+        try {
+            const conn = await pool.getConnection();
+            const refreshToken = req.cookies["token"];
+            const { userId } = req.user;
+            conn.query("DELETE FROM `refresh tokens` WHERE `user id`=? AND token=?", [userId, refreshToken])
+                .then(() => {
+                    res.status(200).clearCookie("token").json({ message: "Đăng xuất thành công" });
+                })
+                .catch((err) => {
+                    res.status(400).json({ message: err.message });
+                });
+            pool.releaseConnection(conn);
+        } catch (error) {
+            res.status(401).json({ message: error.message });
+        }
+    }
 
     async refreshToken(req, res) {
         try {
