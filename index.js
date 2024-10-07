@@ -4,6 +4,7 @@ const route = require("./src/routes");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 const port = process.env.SERVER_POST || 4000;
@@ -23,7 +24,7 @@ app.use(bodyParser.json({ limit: "20mb" }));
 app.use(cookieParser());
 
 // static files
-app.use("/static", express.static("public"));
+app.use("/static", express.static(path.join(__dirname, "public")));
 
 // config route
 route(app);

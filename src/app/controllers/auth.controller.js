@@ -1,37 +1,78 @@
 const jwt = require("jsonwebtoken");
 const { pool } = require("../../connectDB.js");
-const { generateRefreshToken } = require("../../utils/generateToken.js");
+const { generateRefreshToken, generateAccessToken } = require("../../utils/generateToken.js");
+const bcrypt = require("bcrypt");
+const fs = require("fs");
+const path = require("path");
+
+const saltRounds = 10;
+
+const imageToBlob = (imagePath) => {
+    return fs.readFileSync(imagePath);
+};
+
+const generateOneYearTimestamp = () => {
+    // Lấy thời gian hiện tại
+    const date = new Date();
+
+    // Thêm một năm vào thời gian hiện tại
+    date.setFullYear(date.getFullYear() + 1);
+    return date;
+};
 
 class Auth {
     async login(req, res) {}
 
     async register(req, res) {
-        console.log("Đang gọi hàm đăng ký nè~", req.body);
-        const email = req.body.email;
-        const userName = req.body.username;
-        const password = req.body.password;
-        const hashedPassword = await bcrypt.hash(password, 10);
+        try {
+            const { email, password } = req.body;
+            const username = email.split("@")[0];
+            const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        sequelize
-            .sync()
-            .then(() => {
-                User.create({
-                    email: email,
-                    username: userName,
-                    password: hashedPassword,
-                })
-                    .then((result) => {
-                        res.status(201).json({ message: "User created successfully", user: result });
-                    })
-                    .catch((error) => {
-                        console.error("Failed to create a new record : ", error);
-                        res.status(401).json({ message: error.message });
+            const conn = await pool.getConnection();
+
+            const imagePath = path.join(__dirname, "../../../public/default-avatar", "default-avatar-0.jpg");
+            const defaultAvatar = imageToBlob(imagePath);
+
+            conn.query("CALL SP_CreateUserAccount(?,?,?,?)", [email, hashedPassword, username, defaultAvatar])
+                .then(async ([result]) => {
+                    const userInfo = result[0][0];
+                    const expiredAt = generateOneYearTimestamp();
+                    const accessToken = generateAccessToken({ userId: userInfo["user id"], email: userInfo["email"] });
+                    const refreshToken = generateRefreshToken({
+                        userId: userInfo["user id"],
+                        email: userInfo["email"],
+                        expiresIn: expiredAt.getTime(),
                     });
-            })
-            .catch((error) => {
-                console.error("Unable to create table : ", error);
-                res.status(401).json({ message: error.message });
-            });
+
+                    // save refresh token to database
+                    await conn.query("INSERT INTO `refresh tokens` (`user id`, token, `expired at`) VALUE (?, ?, ?);", [
+                        userInfo["user id"],
+                        accessToken,
+                        expiredAt,
+                    ]);
+
+                    const { "user id": id, ...rest } = { ...userInfo, token: accessToken }; // remove user id
+
+                    res.status(200)
+                        .cookie("token", refreshToken, {
+                            expires: expiredAt,
+                            httpOnly: true,
+                            secure: false,
+                        })
+                        .json({ ...rest });
+                })
+                .catch((err) => {
+                    if (err.sqlState === 45000 || err.sqlState === 45001) {
+                        res.status(400).json({ message: err.sqlMessage });
+                    } else {
+                        // không show lỗi khi hoàn tất
+                        res.status(400).json({ message: err.message });
+                    }
+                });
+        } catch (error) {
+            res.status(401).json({ message: error.message });
+        }
     }
 
     async logout(req, res) {}
@@ -70,7 +111,7 @@ class Auth {
             });
             res.status(200).json({ token: accessToken });
         } catch (error) {
-            return res.status(401).json({ message: error.message });
+            res.status(401).json({ message: error.message });
         }
     }
 }
