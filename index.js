@@ -1,15 +1,33 @@
 const express = require("express");
 require("dotenv").config();
 const route = require("./src/routes");
+const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
+const cors = require("cors");
 
 const app = express();
-const port = 3000;
+const port = process.env.SERVER_POST || 4000;
+const client_url = process.env.CLIENT_URL;
 
+const corsOptions = {
+    credentials: true,
+    origin: client_url,
+    methods: ["GET", "PUT", "POST", "DELETE"],
+    allowedHeaders: "Content-Type,Authorization",
+    optionsSuccessStatus: 200,
+    preflightContinue: false,
+};
+app.use(cors(corsOptions));
+app.use(bodyParser.urlencoded({ extended: true, limit: "20mb" }));
+app.use(bodyParser.json({ limit: "20mb" }));
+app.use(cookieParser());
+
+// static files
+app.use("/static", express.static("public"));
+
+// config route
 route(app);
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-
-  // Check DB connection
-  getConnection();
+    console.log(`Example app listening on port ${port}`);
 });
