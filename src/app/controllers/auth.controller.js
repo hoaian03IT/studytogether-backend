@@ -160,7 +160,7 @@ class Auth {
                     refreshToken: newRefreshToken,
                     expiredAt,
                 } = await generateTokensAndStore(userInfo, conn);
-                res.cookie("refresh-token", newRefreshToken, {
+                res.cookie("refresh", newRefreshToken, {
                     maxAge: expiredAt,
                     httpOnly: true,
                     secure: false,
