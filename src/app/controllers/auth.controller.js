@@ -20,8 +20,62 @@ const generateOneYearTimestamp = () => {
     return date;
 };
 
+const generateTokensAndStore = async (userInfo, conn) => {
+    const expiredAt = generateOneYearTimestamp(); // tạo timestamp vào 1 năm sau kể từ hôm nay
+    const accessToken = generateAccessToken({ userId: userInfo["user id"], email: userInfo["email"] });
+    const refreshToken = generateRefreshToken({
+        userId: userInfo["user id"],
+        email: userInfo["email"],
+        expiresIn: expiredAt.getTime(),
+    });
+
+    // save refresh token to database
+    conn.query("INSERT INTO `refresh tokens` (`user id`, token, `expired at`) VALUE (?, ?, ?);", [
+        userInfo["user id"],
+        accessToken,
+        expiredAt,
+    ]).catch((err) => {
+        throw new Error(err);
+    });
+    return { refreshToken, accessToken, expiredAt };
+};
+
 class Auth {
-    async login(req, res) {}
+    async login(req, res) {
+        try {
+            const conn = await pool.getConnection();
+            const { usernameOrEmail, password } = req.body;
+
+            conn.query("CALL SP_GetUserAccount(?)", [usernameOrEmail])
+                .then(async ([result]) => {
+                    const userInfo = result[0][0];
+                    const isMatchP = await bcrypt.compare(password, userInfo["hashpassword"]);
+                    if (!isMatchP) {
+                        res.status(401).json({ message: "Tài khoản hoặc mật khẩu không đúng." });
+                        return;
+                    }
+
+                    const { accessToken, refreshToken, expiredAt } = await generateTokensAndStore(userInfo, conn);
+
+                    const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
+
+                    res.status(200)
+                        .cookie("token", refreshToken, {
+                            expires: expiredAt,
+                            httpOnly: true,
+                            secure: false,
+                        })
+                        .json({ ...rest });
+                })
+                .catch((err) => {
+                    res.status(401).json({ message: err.message });
+                });
+
+            pool.releaseConnection(conn);
+        } catch (error) {
+            res.status(401).json({ message: error.message });
+        }
+    }
 
     async register(req, res) {
         try {
@@ -37,20 +91,8 @@ class Auth {
             conn.query("CALL SP_CreateUserAccount(?,?,?,?)", [email, hashedPassword, username, defaultAvatar])
                 .then(async ([result]) => {
                     const userInfo = result[0][0];
-                    const expiredAt = generateOneYearTimestamp();
-                    const accessToken = generateAccessToken({ userId: userInfo["user id"], email: userInfo["email"] });
-                    const refreshToken = generateRefreshToken({
-                        userId: userInfo["user id"],
-                        email: userInfo["email"],
-                        expiresIn: expiredAt.getTime(),
-                    });
 
-                    // save refresh token to database
-                    await conn.query("INSERT INTO `refresh tokens` (`user id`, token, `expired at`) VALUE (?, ?, ?);", [
-                        userInfo["user id"],
-                        accessToken,
-                        expiredAt,
-                    ]);
+                    const { accessToken, refreshToken, expiredAt } = await generateTokensAndStore(userInfo, conn);
 
                     const { "user id": id, ...rest } = { ...userInfo, token: accessToken }; // remove user id
 
@@ -70,6 +112,7 @@ class Auth {
                         res.status(400).json({ message: err.message });
                     }
                 });
+            pool.releaseConnection(conn);
         } catch (error) {
             res.status(401).json({ message: error.message });
         }

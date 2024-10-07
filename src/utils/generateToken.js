@@ -7,7 +7,6 @@ function generateAccessToken({ userId, email }) {
 }
 
 function generateRefreshToken({ userId, email, expiresIn }) {
-    console.log(userId, email, expiresIn);
     return jwt.sign({ userId: userId, email: email }, process.env.REFRESH_TOKEN_SECRET, {
         expiresIn: expiresIn,
     });
