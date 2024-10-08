@@ -9,6 +9,6 @@ const timeLog = (req, res, next) => {
 };
 router.use(timeLog);
 
-router.post("/create", [authenticate], CourseController.login);
+router.post("/create", [authenticate], CourseController.createCourseInformation);
 
 module.exports = router;
