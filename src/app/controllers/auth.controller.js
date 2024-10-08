@@ -4,8 +4,9 @@ const { generateRefreshToken, generateAccessToken } = require("../../utils/gener
 const bcrypt = require("bcrypt");
 const fs = require("fs");
 const path = require("path");
-
-const saltRounds = 10;
+const { transporter } = require("../../config/nodemailer.js");
+const { validation } = require("../../utils/inputValidations.js");
+const { generatePassword } = require("../../utils/passwordGenerate.js");
 
 const imageToBlob = (imagePath) => {
     return fs.readFileSync(imagePath);
@@ -18,6 +19,16 @@ const generateOneYearTimestamp = () => {
     // Thêm một năm vào thời gian hiện tại
     date.setFullYear(date.getFullYear() + 1);
     return date;
+};
+
+const hashedPassword = async (password) => {
+    try {
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        return hashedPassword;
+    } catch (error) {
+        return res.status(401).json({ message: error.message });
+    }
 };
 
 const generateTokensAndStore = async (userInfo, conn) => {
@@ -81,7 +92,7 @@ class Auth {
         try {
             const { email, password } = req.body;
             const username = email.split("@")[0];
-            const hashedPassword = await bcrypt.hash(password, saltRounds);
+            const hashedPassword = await hashedPassword(password);
 
             const conn = await pool.getConnection();
 
@@ -166,6 +177,49 @@ class Auth {
                     secure: false,
                 });
                 res.status(200).json({ token: accessToken });
+            });
+
+            pool.releaseConnection(conn);
+        } catch (error) {
+            res.status(401).json({ message: error.message });
+        }
+    }
+
+    async forgotPassword(req, res) {
+        try {
+            const conn = await pool.getConnection();
+            const { email } = req.body;
+
+            if (!validation.email(email)) {
+                return res.status(401).json({ message: "Invalid email" });
+            }
+
+            const newPassword = generatePassword();
+            const newHashedPassword = await hashedPassword(newPassword);
+
+            conn.query("UPDATE users SET hashpassword=? WHERE email=?", [newHashedPassword, email])
+                .then(() => {
+                    res.status(200).json({ message: "Password reset email sent successfully" });
+                })
+                .catch((err) => {
+                    res.status(401).json({ message: err.message });
+                });
+
+            const info = await transporter.sendMail({
+                from: {
+                    name: "StudyTogether😊",
+                    address: process.env.NODEMAILER_USER,
+                }, // sender address
+                to: email, // list of receivers
+                subject: "Your new password", // Subject line
+                text: "Hello, guys. We are StudyTogether administrators", // plain text body
+                html: `
+                    <p>We have received a request to change the password for your account. Below is your new password:</p>
+                    <p>Your new password: <strong style="font-size: 20px; background-color: #eee"">${newPassword}</strong> </p>
+                    <p style="color: red">Please use this new password to log in to your StudyTogether account and change your password.</p>
+                    <p>Your friend,</p>
+                    <p><strong>StudyTogether</strong></p>
+                `, // html body
             });
 
             pool.releaseConnection(conn);
