@@ -53,8 +53,9 @@ const generateTokensAndStore = async (userInfo, conn) => {
 
 class Auth {
     async login(req, res) {
+        let conn;
         try {
-            const conn = await pool.getConnection();
+            conn = await pool.getConnection();
             const { usernameOrEmail, password } = req.body;
 
             conn.query("CALL SP_GetUserAccount(?)", [usernameOrEmail])
@@ -85,16 +86,19 @@ class Auth {
             pool.releaseConnection(conn);
         } catch (error) {
             res.status(401).json({ message: error.message });
+        } finally {
+            pool.releaseConnection(conn);
         }
     }
 
     async register(req, res) {
+        let conn;
         try {
             const { email, password } = req.body;
             const username = email.split("@")[0];
             const hashedPassword = await hashedPassword(password);
 
-            const conn = await pool.getConnection();
+            conn = await pool.getConnection();
 
             const imagePath = path.join(__dirname, "../../../public/default-avatar", "default-avatar-0.jpg");
             const defaultAvatar = imageToBlob(imagePath);
@@ -123,15 +127,17 @@ class Auth {
                         res.status(400).json({ message: err.message });
                     }
                 });
-            pool.releaseConnection(conn);
         } catch (error) {
             res.status(401).json({ message: error.message });
+        } finally {
+            pool.releaseConnection(conn);
         }
     }
 
     async logout(req, res) {
+        let conn;
         try {
-            const conn = await pool.getConnection();
+            conn = await pool.getConnection();
             const refreshToken = req.cookies["token"];
             const { userId } = req.user;
             conn.query("DELETE FROM `refresh tokens` WHERE `user id`=? AND token=?", [userId, refreshToken])
@@ -144,12 +150,15 @@ class Auth {
             pool.releaseConnection(conn);
         } catch (error) {
             res.status(401).json({ message: error.message });
+        } finally {
+            pool.releaseConnection(conn);
         }
     }
 
     async refreshToken(req, res) {
+        let conn;
         try {
-            const conn = await pool.getConnection();
+            conn = await pool.getConnection();
             // lấy token từ cookies client
             const refreshToken = req.cookies["token"];
 
@@ -178,16 +187,17 @@ class Auth {
                 });
                 res.status(200).json({ token: accessToken });
             });
-
-            pool.releaseConnection(conn);
         } catch (error) {
             res.status(401).json({ message: error.message });
+        } finally {
+            pool.releaseConnection(conn);
         }
     }
 
     async forgotPassword(req, res) {
+        let conn;
         try {
-            const conn = await pool.getConnection();
+            conn = await pool.getConnection();
             const { email } = req.body;
 
             if (!validation.email(email)) {
@@ -221,10 +231,44 @@ class Auth {
                     <p><strong>StudyTogether</strong></p>
                 `, // html body
             });
-
-            pool.releaseConnection(conn);
         } catch (error) {
             res.status(401).json({ message: error.message });
+        } finally {
+            pool.releaseConnection(conn);
+        }
+    }
+
+    async changePassword(req, res) {
+        let conn;
+        try {
+            conn = await pool.getConnection();
+            const { userId } = req.user;
+
+            const { currentPassword, newPassword } = req.body;
+
+            if (!validation.password(currentPassword) || !validation.password(newPassword)) {
+                return res.status(401).json({ message: "Invalid password" });
+            }
+
+            const [result] = await conn.query("SELECT  `user id`, hashpassword FROM users WHERE `user id`=?", [userId]);
+
+            if (result.length === 0) {
+                return res.status(401).json({ message: "User doesnot exist" });
+            }
+
+            const isMatch = await bcrypt.compare(currentPassword, result[0].hashpassword);
+            if (!isMatch) {
+                return res.status(401).json({ message: "Your password is incorrect" });
+            }
+
+            const newHashedPassword = await hashedPassword(newPassword);
+            await conn.query("UPDATE users SET hashpassword=? WHERE `user id`=?", [newHashedPassword, userId]);
+
+            res.status(200).json({ message: "Password changed successfully" });
+        } catch (error) {
+            res.status(401).json({ message: error.message });
+        } finally {
+            pool.releaseConnection(conn);
         }
     }
 }
