@@ -21,7 +21,7 @@ const generateOneYearTimestamp = () => {
     return date;
 };
 
-const hashedPassword = async (password) => {
+const convertHashedPassword = async (password) => {
     try {
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
@@ -58,12 +58,20 @@ class Auth {
             conn = await pool.getConnection();
             const { usernameOrEmail, password } = req.body;
 
+            if (!validation.email(usernameOrEmail) && !validation.username(usernameOrEmail)) {
+                return res.status(401).json({ message: "Invalid account." });
+            }
+
+            if (!validation.password(password)) {
+                return res.status(401).json({ message: "Invalid password." });
+            }
+
             conn.query("CALL SP_GetUserAccount(?)", [usernameOrEmail])
                 .then(async ([result]) => {
                     const userInfo = result[0][0];
                     const isMatchP = await bcrypt.compare(password, userInfo["hashpassword"]);
                     if (!isMatchP) {
-                        res.status(401).json({ message: "Tài khoản hoặc mật khẩu không đúng." });
+                        res.status(401).json({ message: "Incorrect account or password." });
                         return;
                     }
 
@@ -95,8 +103,17 @@ class Auth {
         let conn;
         try {
             const { email, password } = req.body;
+
+            if (!validation.email(email)) {
+                return res.status(401).json({ message: "Invalid email" });
+            }
+
+            if (!validation.password(password)) {
+                return res.status(401).json({ message: "Invalid password" });
+            }
+
             const username = email.split("@")[0];
-            const hashedPassword = await hashedPassword(password);
+            const hashedPassword = await convertHashedPassword(password);
 
             conn = await pool.getConnection();
 
@@ -205,7 +222,7 @@ class Auth {
             }
 
             const newPassword = generatePassword();
-            const newHashedPassword = await hashedPassword(newPassword);
+            const newHashedPassword = await convertHashedPassword(newPassword);
 
             conn.query("UPDATE users SET hashpassword=? WHERE email=?", [newHashedPassword, email])
                 .then(() => {
@@ -253,7 +270,7 @@ class Auth {
             const [result] = await conn.query("SELECT  `user id`, hashpassword FROM users WHERE `user id`=?", [userId]);
 
             if (result.length === 0) {
-                return res.status(401).json({ message: "User doesnot exist" });
+                return res.status(401).json({ message: "User does not exist" });
             }
 
             const isMatch = await bcrypt.compare(currentPassword, result[0].hashpassword);
@@ -261,7 +278,7 @@ class Auth {
                 return res.status(401).json({ message: "Your password is incorrect" });
             }
 
-            const newHashedPassword = await hashedPassword(newPassword);
+            const newHashedPassword = await convertHashedPassword(newPassword);
             await conn.query("UPDATE users SET hashpassword=? WHERE `user id`=?", [newHashedPassword, userId]);
 
             res.status(200).json({ message: "Password changed successfully" });
