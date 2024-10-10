@@ -10,5 +10,6 @@ const timeLog = (req, res, next) => {
 router.use(timeLog);
 
 router.post("/create", [authenticate], CourseController.createCourseInformation);
+router.delete("/destroy/:courseId", [authenticate], CourseController.destroyOwnCourse);
 
 module.exports = router;

@@ -2,15 +2,11 @@ const jwt = require("jsonwebtoken");
 const { pool } = require("../../connectDB.js");
 const { generateRefreshToken, generateAccessToken } = require("../../utils/generateToken.js");
 const bcrypt = require("bcrypt");
-const fs = require("fs");
 const path = require("path");
 const { transporter } = require("../../config/nodemailer.js");
 const { validation } = require("../../utils/inputValidations.js");
 const { generatePassword } = require("../../utils/passwordGenerate.js");
-
-const imageToBlob = (imagePath) => {
-    return fs.readFileSync(imagePath);
-};
+const imageToBlob = require("../../utils/imageToBlob.js");
 
 const generateOneYearTimestamp = () => {
     // Lấy thời gian hiện tại
