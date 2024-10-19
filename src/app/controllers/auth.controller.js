@@ -76,8 +76,6 @@ class Auth {
             conn = await pool.getConnection();
             const { usernameOrEmail, password } = req.body;
 
-            console.log(usernameOrEmail, password);
-
             if (!validation.email(usernameOrEmail) && !validation.username(usernameOrEmail)) {
                 return res.status(401).json({ message: "Invalid account." });
             }
@@ -97,15 +95,22 @@ class Auth {
 
                     const { accessToken, refreshToken, expiredAt } = await generateTokensAndStore(userInfo, conn);
 
-                    const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
+                    const { hashpassword, "user id": id, ...rest } = userInfo;
 
-                    res.status(200)
-                        .cookie("token", refreshToken, {
-                            expires: expiredAt,
-                            httpOnly: true,
-                            secure: false,
-                        })
-                        .json({ ...rest });
+                    res.cookie("access_token", accessToken, {
+                        httpOnly: true,
+                        secure: true,
+                        maxAge: 60 * 1000,
+                    });
+
+                    res.cookie("refresh_token", refreshToken, {
+                        maxAge: 1000 * 60 * 60 * 24 * 365,
+                        expires: expiredAt,
+                        httpOnly: true,
+                        secure: true,
+                    });
+
+                    res.status(200).json({ ...rest });
                 })
                 .catch((err) => {
                     res.status(401).json({ message: err.message });
@@ -164,15 +169,22 @@ class Auth {
 
                     const { accessToken, refreshToken, expiredAt } = await generateTokensAndStore(userInfo, conn);
 
-                    const { "user id": id, ...rest } = { ...userInfo, token: accessToken }; // remove user id
+                    const { "user id": id, ...rest } = userInfo; // remove user id
 
-                    res.status(200)
-                        .cookie("token", refreshToken, {
-                            expires: expiredAt,
-                            httpOnly: true,
-                            secure: false,
-                        })
-                        .json({ ...rest });
+                    res.cookie("access_token", accessToken, {
+                        httpOnly: true,
+                        secure: true,
+                        maxAge: 60 * 1000,
+                    });
+
+                    res.cookie("refresh_token", refreshToken, {
+                        maxAge: 1000 * 60 * 60 * 24 * 365,
+                        expires: expiredAt,
+                        httpOnly: true,
+                        secure: true,
+                    });
+
+                    res.status(200).json({ ...rest });
                 })
                 .catch((err) => {
                     if (err.sqlState === 45000 || err.sqlState === 45001) {
@@ -197,7 +209,11 @@ class Auth {
             const { userId } = req.user;
             conn.query("DELETE FROM `refresh tokens` WHERE `user id`=? AND token=?", [userId, refreshToken])
                 .then(() => {
-                    res.status(200).clearCookie("token").json({ message: "Đăng xuất thành công" });
+                    // clear cookie từ client
+                    res.clearCookie("refresh_token");
+                    res.clearCookie("access_token");
+
+                    res.status(200).json({ message: "Đăng xuất thành công" });
                 })
                 .catch((err) => {
                     res.status(400).json({ message: err.message });
@@ -362,15 +378,22 @@ class Auth {
 
                     const { accessToken, refreshToken, expiredAt } = await generateTokensAndStore(userInfo, conn);
 
-                    const { "user id": id, ...rest } = { ...userInfo, token: accessToken }; // remove user id
+                    const { "user id": id, ...rest } = userInfo; // remove user id
 
-                    res.status(200)
-                        .cookie("token", refreshToken, {
-                            expires: expiredAt,
-                            httpOnly: true,
-                            secure: false,
-                        })
-                        .json({ ...rest });
+                    res.cookie("access_token", accessToken, {
+                        httpOnly: true,
+                        secure: true,
+                        maxAge: 60 * 1000,
+                    });
+
+                    res.cookie("refresh_token", refreshToken, {
+                        maxAge: 1000 * 60 * 60 * 24 * 365,
+                        expires: expiredAt,
+                        httpOnly: true,
+                        secure: true,
+                    });
+
+                    res.status(200).json({ ...rest });
                 })
                 .catch((err) => {
                     if (err.sqlState === 45000 || err.sqlState === 45001) {
