@@ -54,6 +54,36 @@ class Course {
         }
     }
 
+    async updateCourseInformation(req, res) {
+        let conn;
+        try {
+            conn = await pool.getConnection();
+            const { userId } = req.user;
+            const { courseId } = req.query;
+            const { name, image, forLanguage, shortDescription, detailedDescription, isPrivate, tag, level } = req.body;
+
+            if (!courseId || !userId)
+                conn.query("CALL SP_UpdateCourseInformation(?,?,?,?,?,?,?,?,?,?)", [
+                    userId,
+                    courseId,
+                    name,
+                    image,
+                    forLanguage,
+                    level,
+                    tag,
+                    shortDescription,
+                    detailedDescription,
+                    isPrivate,
+                ])
+                    .then((response) => res.status(200).json(response[0][0][0]))
+                    .catch((err) => res.status(401).json({ err: err.message }));
+        } catch (error) {
+            res.status(401).json({ message: error.message });
+        } finally {
+            pool.releaseConnection(conn);
+        }
+    }
+
     async destroyOwnCourse(req, res) {
         let conn;
         try {
@@ -79,6 +109,8 @@ class Course {
             pool.releaseConnection(conn);
         }
     }
+
+    async getCourseList(req, res) {}
 }
 
 module.exports = new Course();

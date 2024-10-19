@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 
 function authenticate(req, res, next) {
     try {
-        const textInsideToken = "BearerToken";
+        const textInsideToken = "Bearer";
         const splitted = req.headers.authorization.split(" ");
         if (splitted[0] !== textInsideToken) {
             return res.status(401).json({ message: "Unauthenticated 1" });

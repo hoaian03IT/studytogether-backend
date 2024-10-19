@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const { pool } = require("../../connectDB.js");
 const { generateRefreshToken, generateAccessToken } = require("../../utils/generateToken.js");
 const bcrypt = require("bcrypt");
@@ -7,6 +8,10 @@ const { transporter } = require("../../config/nodemailer.js");
 const { validation } = require("../../utils/inputValidations.js");
 const { generatePassword } = require("../../utils/passwordGenerate.js");
 const imageToBlob = require("../../utils/imageToBlob.js");
+const { OAuth2Client } = require("google-auth-library");
+
+const clientId = process.env.GG_CLIENT_ID;
+const client = new OAuth2Client(clientId, process.env.GG_CLIENT_SECRET);
 
 const generateOneYearTimestamp = () => {
     // Lấy thời gian hiện tại
@@ -26,6 +31,8 @@ const convertHashedPassword = async (password) => {
         return res.status(401).json({ message: error.message });
     }
 };
+
+// Helper function to create a simple hash (MD5-like) from a string
 
 const generateTokensAndStore = async (userInfo, conn) => {
     const expiredAt = generateOneYearTimestamp(); // tạo timestamp vào 1 năm sau kể từ hôm nay
@@ -47,12 +54,29 @@ const generateTokensAndStore = async (userInfo, conn) => {
     return { refreshToken, accessToken, expiredAt };
 };
 
+const generateUsername = (email) => {
+    const hash = crypto.createHash("md5").update(email).digest("hex").slice(0, 6); // Take first 6 characters of the hash
+    let username = `${email.split("@")[0]}_${hash}`;
+    return username;
+};
+
+const verifyToken = async (credentials) => {
+    const ticket = await client.verifyIdToken({
+        idToken: credentials,
+        audience: clientId,
+    });
+
+    return ticket.getPayload();
+};
+
 class Auth {
     async login(req, res) {
         let conn;
         try {
             conn = await pool.getConnection();
             const { usernameOrEmail, password } = req.body;
+
+            console.log(usernameOrEmail, password);
 
             if (!validation.email(usernameOrEmail) && !validation.username(usernameOrEmail)) {
                 return res.status(401).json({ message: "Invalid account." });
@@ -98,7 +122,7 @@ class Auth {
     async register(req, res) {
         let conn;
         try {
-            const { email, password } = req.body;
+            const { email, password, role } = req.body;
 
             if (!validation.email(email)) {
                 return res.status(401).json({ message: "Invalid email" });
@@ -108,17 +132,35 @@ class Auth {
                 return res.status(401).json({ message: "Invalid password" });
             }
 
-            const username = email.split("@")[0];
+            let username = email.split("@")[0];
             const hashedPassword = await convertHashedPassword(password);
 
             conn = await pool.getConnection();
 
+            let [records] = await conn.query(
+                "SELECT `user id` FROM users WHERE username=? ORDER BY `user id` LIMIT 1",
+                [username]
+            );
+
+            if (records.length > 0) {
+                username = generateUsername(email);
+            }
+
             const imagePath = path.join(__dirname, "../../../public/default-avatar", "default-avatar-0.jpg");
             const defaultAvatar = imageToBlob(imagePath);
 
-            conn.query("CALL SP_CreateUserAccount(?,?,?,?)", [email, hashedPassword, username, defaultAvatar])
-                .then(async ([result]) => {
-                    const userInfo = result[0][0];
+            conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?)", [
+                email,
+                hashedPassword,
+                username,
+                defaultAvatar,
+                role,
+                null,
+                null,
+                null,
+            ])
+                .then(async ([response]) => {
+                    const userInfo = response[0][0];
 
                     const { accessToken, refreshToken, expiredAt } = await generateTokensAndStore(userInfo, conn);
 
@@ -211,7 +253,8 @@ class Auth {
         let conn;
         try {
             conn = await pool.getConnection();
-            const { email } = req.body;
+            let { email } = req.body;
+            email = email.trim();
 
             if (!validation.email(email)) {
                 return res.status(401).json({ message: "Invalid email" });
@@ -220,30 +263,29 @@ class Auth {
             const newPassword = generatePassword();
             const newHashedPassword = await convertHashedPassword(newPassword);
 
-            conn.query("UPDATE users SET hashpassword=? WHERE email=?", [newHashedPassword, email])
-                .then(() => {
-                    res.status(200).json({ message: "Password reset email sent successfully" });
+            conn.query("CALL SP_GetNewPassword(?, ?)", [newHashedPassword, email])
+                .then(async (response) => {
+                    const info = await transporter.sendMail({
+                        from: {
+                            name: "StudyTogether😊",
+                            address: process.env.NODEMAILER_USER,
+                        }, // sender address
+                        to: email, // list of receivers
+                        subject: "Your new password", // Subject line
+                        text: "Hello, guys. We are StudyTogether administrators", // plain text body
+                        html: `
+                            <p>We have received a request to change the password for your account. Below is your new password:</p>
+                            <p>Your new password: <strong style="font-size: 20px; background-color: #eee"">${newPassword}</strong> </p>
+                            <p style="color: red">Please use this new password to log in to your StudyTogether account and change your password.</p>
+                            <p>Your friend,</p>
+                            <p><strong>StudyTogether</strong></p>
+                        `, // html body
+                    });
+                    res.status(200).json({ message: response[0][0][0].message });
                 })
                 .catch((err) => {
                     res.status(401).json({ message: err.message });
                 });
-
-            const info = await transporter.sendMail({
-                from: {
-                    name: "StudyTogether😊",
-                    address: process.env.NODEMAILER_USER,
-                }, // sender address
-                to: email, // list of receivers
-                subject: "Your new password", // Subject line
-                text: "Hello, guys. We are StudyTogether administrators", // plain text body
-                html: `
-                    <p>We have received a request to change the password for your account. Below is your new password:</p>
-                    <p>Your new password: <strong style="font-size: 20px; background-color: #eee"">${newPassword}</strong> </p>
-                    <p style="color: red">Please use this new password to log in to your StudyTogether account and change your password.</p>
-                    <p>Your friend,</p>
-                    <p><strong>StudyTogether</strong></p>
-                `, // html body
-            });
         } catch (error) {
             res.status(401).json({ message: error.message });
         } finally {
@@ -280,6 +322,66 @@ class Auth {
             res.status(200).json({ message: "Password changed successfully" });
         } catch (error) {
             res.status(401).json({ message: error.message });
+        } finally {
+            pool.releaseConnection(conn);
+        }
+    }
+
+    async googleLogin(req, res) {
+        let conn;
+        try {
+            const { token, role } = req.body;
+            const { email, family_name, given_name, picture, sub } = await verifyToken(token);
+
+            conn = await pool.getConnection();
+
+            let username = email.split("@")[0];
+
+            let [records] = await conn.query(
+                "SELECT `user id` FROM users WHERE username=? ORDER BY `user id` LIMIT 1",
+                [username]
+            );
+
+            if (records.length > 0) {
+                username = generateUsername(email);
+            }
+
+            const hashedPassword = await convertHashedPassword(sub);
+            conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?)", [
+                email,
+                hashedPassword,
+                username,
+                picture,
+                role,
+                sub,
+                given_name,
+                family_name,
+            ])
+                .then(async ([response]) => {
+                    const userInfo = response[0][0];
+
+                    const { accessToken, refreshToken, expiredAt } = await generateTokensAndStore(userInfo, conn);
+
+                    const { "user id": id, ...rest } = { ...userInfo, token: accessToken }; // remove user id
+
+                    res.status(200)
+                        .cookie("token", refreshToken, {
+                            expires: expiredAt,
+                            httpOnly: true,
+                            secure: false,
+                        })
+                        .json({ ...rest });
+                })
+                .catch((err) => {
+                    if (err.sqlState === 45000 || err.sqlState === 45001) {
+                        res.status(400).json({ message: err.sqlMessage });
+                    } else {
+                        // không show lỗi khi hoàn tất
+                        res.status(400).json({ message: err.message });
+                    }
+                });
+        } catch (error) {
+            res.status(403).json(error.message);
         } finally {
             pool.releaseConnection(conn);
         }
