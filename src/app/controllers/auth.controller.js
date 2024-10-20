@@ -364,6 +364,8 @@ class Auth {
                 .catch(async (err) => {
                     if (err.sqlState != 45000) return res.status(401).json({ message: err.message });
                     // trường hợp procedure báo lỗi không có tài khoản thì tạo
+                    if (!role) return res.status(401).json({ message: "You must register first" });
+
                     let username = email.split("@")[0];
 
                     let [records] = await conn.query(
@@ -452,6 +454,8 @@ class Auth {
                 .catch(async (err) => {
                     if (err.sqlState != 45000) return res.status(401).json({ message: err.message });
                     // trường hợp procedure báo lỗi không có tài khoản thì tạo
+                    if (!role) return res.status(401).json({ message: "You must register first" });
+
                     let username = email.split("@")[0];
 
                     let [records] = await conn.query(
