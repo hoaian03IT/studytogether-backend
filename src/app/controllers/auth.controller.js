@@ -8,22 +8,19 @@ const { transporter } = require("../../config/nodemailer.js");
 const { validation } = require("../../utils/inputValidations.js");
 const { generatePassword } = require("../../utils/passwordGenerate.js");
 const imageToBlob = require("../../utils/imageToBlob.js");
-const { OAuth2Client } = require("google-auth-library");
 const { google } = require("googleapis");
+const { default: axios } = require("axios");
 
-const clientId = process.env.GG_CLIENT_ID;
-const client = new OAuth2Client(clientId, process.env.GG_CLIENT_SECRET);
+const oauth2Client = new google.auth.OAuth2();
 
-const generateOneYearTimestamp = () => {
+function generateOneYearTimestamp() {
     // Lấy thời gian hiện tại
     const date = new Date();
-
     // Thêm một năm vào thời gian hiện tại
     date.setFullYear(date.getFullYear() + 1);
     return date;
-};
-
-const convertHashedPassword = async (password) => {
+}
+async function convertHashedPassword(password) {
     try {
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
@@ -31,11 +28,8 @@ const convertHashedPassword = async (password) => {
     } catch (error) {
         return res.status(401).json({ message: error.message });
     }
-};
-
-// Helper function to create a simple hash (MD5-like) from a string
-
-const generateTokensAndStore = async (userInfo, conn) => {
+}
+async function generateTokensAndStore(userInfo, conn) {
     const expiredAt = generateOneYearTimestamp(); // tạo timestamp vào 1 năm sau kể từ hôm nay
     const accessToken = generateAccessToken({ userId: userInfo["user id"], email: userInfo["email"] });
     const refreshToken = generateRefreshToken({
@@ -43,7 +37,6 @@ const generateTokensAndStore = async (userInfo, conn) => {
         email: userInfo["email"],
         expiresIn: expiredAt.getTime(),
     });
-
     // save refresh token to database
     conn.query("INSERT INTO `refresh tokens` (`user id`, token, `expired at`) VALUE (?, ?, ?);", [
         userInfo["user id"],
@@ -53,23 +46,28 @@ const generateTokensAndStore = async (userInfo, conn) => {
         throw new Error(err);
     });
     return { refreshToken, accessToken, expiredAt };
-};
-
-const generateUsername = (email) => {
+}
+function generateUsername(email) {
     const hash = crypto.createHash("md5").update(email).digest("hex").slice(0, 6); // Take first 6 characters of the hash
     let username = `${email.split("@")[0]}_${hash}`;
     return username;
-};
-
-const verifyToken = async (credentials) => {
-    const ticket = await client.verifyIdToken({
-        idToken: credentials,
-        audience: clientId,
+}
+function storeCookieOnClient(res, { accessToken, refreshToken, refreshTokenExpires }) {
+    res.cookie("access_token", accessToken, {
+        httpOnly: true,
+        secure: true,
+        maxAge: 60 * 1000,
     });
 
-    return ticket.getPayload();
-};
+    res.cookie("refresh_token", refreshToken, {
+        maxAge: 1000 * 60 * 60 * 24 * 365,
+        expires: refreshTokenExpires,
+        httpOnly: true,
+        secure: true,
+    });
 
+    return res;
+}
 class Auth {
     async login(req, res) {
         let conn;
@@ -98,26 +96,17 @@ class Auth {
 
                     const { hashpassword, "user id": id, ...rest } = userInfo;
 
-                    res.cookie("access_token", accessToken, {
-                        httpOnly: true,
-                        secure: true,
-                        maxAge: 60 * 1000,
+                    let updatedRes = storeCookieOnClient(res, {
+                        accessToken,
+                        refreshToken,
+                        refreshTokenExpires: expiredAt,
                     });
 
-                    res.cookie("refresh_token", refreshToken, {
-                        maxAge: 1000 * 60 * 60 * 24 * 365,
-                        expires: expiredAt,
-                        httpOnly: true,
-                        secure: true,
-                    });
-
-                    res.status(200).json({ ...rest });
+                    updatedRes.status(200).json({ ...rest, message: "login" });
                 })
                 .catch((err) => {
                     res.status(401).json({ message: err.message });
                 });
-
-            pool.releaseConnection(conn);
         } catch (error) {
             res.status(401).json({ message: error.message });
         } finally {
@@ -155,12 +144,13 @@ class Auth {
             const imagePath = path.join(__dirname, "../../../public/default-avatar", "default-avatar-0.jpg");
             const defaultAvatar = imageToBlob(imagePath);
 
-            conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?)", [
+            conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?,?)", [
                 email,
                 hashedPassword,
                 username,
                 defaultAvatar,
                 role,
+                null,
                 null,
                 null,
                 null,
@@ -170,22 +160,15 @@ class Auth {
 
                     const { accessToken, refreshToken, expiredAt } = await generateTokensAndStore(userInfo, conn);
 
-                    const { "user id": id, ...rest } = userInfo; // remove user id
+                    const { "user id": id, hashpassword, ...rest } = userInfo; // remove user id
 
-                    res.cookie("access_token", accessToken, {
-                        httpOnly: true,
-                        secure: true,
-                        maxAge: 60 * 1000,
+                    let updatedRes = storeCookieOnClient(res, {
+                        accessToken,
+                        refreshToken,
+                        refreshTokenExpires: expiredAt,
                     });
 
-                    res.cookie("refresh_token", refreshToken, {
-                        maxAge: 1000 * 60 * 60 * 24 * 365,
-                        expires: expiredAt,
-                        httpOnly: true,
-                        secure: true,
-                    });
-
-                    res.status(200).json({ ...rest });
+                    updatedRes.status(200).json({ ...rest, message: "login" });
                 })
                 .catch((err) => {
                     if (err.sqlState === 45000 || err.sqlState === 45001) {
@@ -252,12 +235,13 @@ class Auth {
                     refreshToken: newRefreshToken,
                     expiredAt,
                 } = await generateTokensAndStore(userInfo, conn);
-                res.cookie("token", newRefreshToken, {
-                    maxAge: expiredAt,
-                    httpOnly: true,
-                    secure: false,
+                let updatedRes = storeCookieOnClient(res, {
+                    accessToken,
+                    refreshToken,
+                    refreshTokenExpires: expiredAt,
                 });
-                res.status(200).json({ token: accessToken });
+
+                updatedRes.status(200).json({ message: "refreshed token" });
             });
         } catch (error) {
             res.status(401).json({ message: error.message });
@@ -350,7 +334,6 @@ class Auth {
             conn = await pool.getConnection();
 
             const { token, role } = req.body;
-            const oauth2Client = new google.auth.OAuth2();
             oauth2Client.setCredentials({ access_token: token });
 
             const oauth2 = google.oauth2({
@@ -368,26 +351,18 @@ class Auth {
                     const userInfo = response[0][0];
                     const { accessToken, refreshToken, expiredAt } = await generateTokensAndStore(userInfo, conn);
 
-                    const { "user id": id, ...rest } = userInfo; // remove user id
+                    const { hashpassword, "user id": id, ...rest } = userInfo;
 
-                    res.cookie("access_token", accessToken, {
-                        httpOnly: true,
-                        secure: true,
-                        maxAge: 60 * 1000,
+                    let updatedRes = storeCookieOnClient(res, {
+                        accessToken,
+                        refreshToken,
+                        refreshTokenExpires: expiredAt,
                     });
 
-                    res.cookie("refresh_token", refreshToken, {
-                        maxAge: 1000 * 60 * 60 * 24 * 365,
-                        expires: expiredAt,
-                        httpOnly: true,
-                        secure: true,
-                    });
-
-                    res.status(200).json({ ...rest, message: "login" });
+                    updatedRes.status(200).json({ ...rest, message: "login" });
                 })
                 .catch(async (err) => {
-                    if (err.sqlCode !== 45000) return res.status(401).json({ message: err.message });
-                    Ư;
+                    if (err.sqlState != 45000) return res.status(401).json({ message: err.message });
                     // trường hợp procedure báo lỗi không có tài khoản thì tạo
                     let username = email.split("@")[0];
 
@@ -401,15 +376,16 @@ class Auth {
                     }
 
                     const hashedPassword = await convertHashedPassword(sub);
-                    conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?)", [
+                    conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?,?)", [
                         email,
                         hashedPassword,
                         username,
                         picture,
                         role,
-                        sub,
                         given_name,
                         family_name,
+                        sub,
+                        null,
                     ])
                         .then(async ([response]) => {
                             const userInfo = response[0][0];
@@ -419,22 +395,15 @@ class Auth {
                                 conn
                             );
 
-                            const { "user id": id, ...rest } = userInfo; // remove user id
+                            const { hashpassword, "user id": id, ...rest } = userInfo;
 
-                            res.cookie("access_token", accessToken, {
-                                httpOnly: true,
-                                secure: true,
-                                maxAge: 60 * 1000,
+                            let updatedRes = storeCookieOnClient(res, {
+                                accessToken,
+                                refreshToken,
+                                refreshTokenExpires: expiredAt,
                             });
 
-                            res.cookie("refresh_token", refreshToken, {
-                                maxAge: 1000 * 60 * 60 * 24 * 365,
-                                expires: expiredAt,
-                                httpOnly: true,
-                                secure: true,
-                            });
-
-                            res.status(200).json({ ...rest, message: "register" });
+                            updatedRes.status(200).json({ ...rest, message: "register" });
                         })
                         .catch((err) => {
                             if (err.sqlState === 45000 || err.sqlState === 45001) {
@@ -446,7 +415,95 @@ class Auth {
                         });
                 });
         } catch (error) {
-            res.status(403).json(error.message);
+            res.status(403).json({ message: error.message });
+        } finally {
+            pool.releaseConnection(conn);
+        }
+    }
+
+    async facebookLogin(req, res) {
+        let conn;
+        try {
+            conn = await pool.getConnection();
+
+            const { token, role } = req.body;
+
+            // Facebook Graph API URL with token
+            const url = `https://graph.facebook.com/me?access_token=${token}&fields=id,email,first_name,last_name,picture`;
+
+            const response = await axios.get(url, { withCredentials: true });
+            const { id: idFB, email, first_name, last_name, picture } = response.data;
+
+            conn.query("CALL SP_GetUserAccountByFacebookId(?,?)", [email, idFB])
+                .then(async ([response]) => {
+                    const userInfo = response[0][0];
+                    const { accessToken, refreshToken, expiredAt } = await generateTokensAndStore(userInfo, conn);
+
+                    const { hashpassword, "user id": id, ...rest } = userInfo;
+
+                    let updatedRes = storeCookieOnClient(res, {
+                        accessToken,
+                        refreshToken,
+                        refreshTokenExpires: expiredAt,
+                    });
+
+                    updatedRes.status(200).json({ ...rest, message: "login" });
+                })
+                .catch(async (err) => {
+                    if (err.sqlState != 45000) return res.status(401).json({ message: err.message });
+                    // trường hợp procedure báo lỗi không có tài khoản thì tạo
+                    let username = email.split("@")[0];
+
+                    let [records] = await conn.query(
+                        "SELECT 1 FROM users WHERE username=? ORDER BY `user id` LIMIT 1",
+                        [username]
+                    );
+
+                    if (records.length > 0) {
+                        username = generateUsername(email);
+                    }
+
+                    const hashedPassword = await convertHashedPassword(idFB);
+                    conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?,?)", [
+                        email,
+                        hashedPassword,
+                        username,
+                        picture.data.url,
+                        role,
+                        first_name,
+                        last_name,
+                        null,
+                        idFB,
+                    ])
+                        .then(async ([response]) => {
+                            const userInfo = response[0][0];
+
+                            const { accessToken, refreshToken, expiredAt } = await generateTokensAndStore(
+                                userInfo,
+                                conn
+                            );
+
+                            const { hashpassword, "user id": id, ...rest } = userInfo;
+
+                            let updatedRes = storeCookieOnClient(res, {
+                                accessToken,
+                                refreshToken,
+                                refreshTokenExpires: expiredAt,
+                            });
+
+                            updatedRes.status(200).json({ ...rest, message: "register" });
+                        })
+                        .catch((err) => {
+                            if (err.sqlState === 45000 || err.sqlState === 45001) {
+                                res.status(400).json({ message: err.sqlMessage });
+                            } else {
+                                // không show lỗi khi hoàn tất
+                                res.status(400).json({ message: err.message });
+                            }
+                        });
+                });
+        } catch (error) {
+            res.status(403).json({ error: error.message });
         } finally {
             pool.releaseConnection(conn);
         }
