@@ -9,6 +9,7 @@ const { validation } = require("../../utils/inputValidations.js");
 const { generatePassword } = require("../../utils/passwordGenerate.js");
 const imageToBlob = require("../../utils/imageToBlob.js");
 const { OAuth2Client } = require("google-auth-library");
+const { google } = require("googleapis");
 
 const clientId = process.env.GG_CLIENT_ID;
 const client = new OAuth2Client(clientId, process.env.GG_CLIENT_SECRET);
@@ -346,36 +347,25 @@ class Auth {
     async googleLogin(req, res) {
         let conn;
         try {
-            const { token, role } = req.body;
-            const { email, family_name, given_name, picture, sub } = await verifyToken(token);
-
             conn = await pool.getConnection();
 
-            let username = email.split("@")[0];
+            const { token, role } = req.body;
+            const oauth2Client = new google.auth.OAuth2();
+            oauth2Client.setCredentials({ access_token: token });
 
-            let [records] = await conn.query(
-                "SELECT `user id` FROM users WHERE username=? ORDER BY `user id` LIMIT 1",
-                [username]
-            );
+            const oauth2 = google.oauth2({
+                auth: oauth2Client,
+                version: "v2",
+            });
 
-            if (records.length > 0) {
-                username = generateUsername(email);
-            }
+            const { data } = await oauth2.userinfo.get();
 
-            const hashedPassword = await convertHashedPassword(sub);
-            conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?)", [
-                email,
-                hashedPassword,
-                username,
-                picture,
-                role,
-                sub,
-                given_name,
-                family_name,
-            ])
+            const { email, given_name, family_name, picture, id: sub } = data;
+
+            // check nếu đã có tài khoản...
+            conn.query("CALL SP_GetUserAccountByGoogleId(?,?)", [email, sub])
                 .then(async ([response]) => {
                     const userInfo = response[0][0];
-
                     const { accessToken, refreshToken, expiredAt } = await generateTokensAndStore(userInfo, conn);
 
                     const { "user id": id, ...rest } = userInfo; // remove user id
@@ -393,15 +383,67 @@ class Auth {
                         secure: true,
                     });
 
-                    res.status(200).json({ ...rest });
+                    res.status(200).json({ ...rest, message: "login" });
                 })
-                .catch((err) => {
-                    if (err.sqlState === 45000 || err.sqlState === 45001) {
-                        res.status(400).json({ message: err.sqlMessage });
-                    } else {
-                        // không show lỗi khi hoàn tất
-                        res.status(400).json({ message: err.message });
+                .catch(async (err) => {
+                    if (err.sqlCode !== 45000) return res.status(401).json({ message: err.message });
+                    Ư;
+                    // trường hợp procedure báo lỗi không có tài khoản thì tạo
+                    let username = email.split("@")[0];
+
+                    let [records] = await conn.query(
+                        "SELECT 1 FROM users WHERE username=? ORDER BY `user id` LIMIT 1",
+                        [username]
+                    );
+
+                    if (records.length > 0) {
+                        username = generateUsername(email);
                     }
+
+                    const hashedPassword = await convertHashedPassword(sub);
+                    conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?)", [
+                        email,
+                        hashedPassword,
+                        username,
+                        picture,
+                        role,
+                        sub,
+                        given_name,
+                        family_name,
+                    ])
+                        .then(async ([response]) => {
+                            const userInfo = response[0][0];
+
+                            const { accessToken, refreshToken, expiredAt } = await generateTokensAndStore(
+                                userInfo,
+                                conn
+                            );
+
+                            const { "user id": id, ...rest } = userInfo; // remove user id
+
+                            res.cookie("access_token", accessToken, {
+                                httpOnly: true,
+                                secure: true,
+                                maxAge: 60 * 1000,
+                            });
+
+                            res.cookie("refresh_token", refreshToken, {
+                                maxAge: 1000 * 60 * 60 * 24 * 365,
+                                expires: expiredAt,
+                                httpOnly: true,
+                                secure: true,
+                            });
+
+                            res.status(200).json({ ...rest, message: "register" });
+                        })
+                        .catch((err) => {
+                            if (err.sqlState === 45000 || err.sqlState === 45001) {
+                                res.status(400).json({ message: err.sqlMessage });
+                            } else {
+                                // không show lỗi khi hoàn tất
+                                res.status(400).json({ message: err.message });
+                            }
+                        });
                 });
         } catch (error) {
             res.status(403).json(error.message);
