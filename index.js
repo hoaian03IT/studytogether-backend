@@ -23,7 +23,7 @@ app.use(bodyParser.urlencoded({ extended: true, limit: "20mb" }));
 app.use(bodyParser.json({ limit: "20mb" }));
 app.use(cookieParser());
 
-// static files
+// static files: '/static/...'
 app.use("/static", express.static(path.join(__dirname, "public")));
 
 // config route

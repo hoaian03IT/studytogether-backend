@@ -3,11 +3,9 @@ const crypto = require("crypto");
 const { pool } = require("../../connectDB.js");
 const { generateRefreshToken, generateAccessToken } = require("../../utils/generateToken.js");
 const bcrypt = require("bcrypt");
-const path = require("path");
 const { transporter } = require("../../config/nodemailer.js");
 const { validation } = require("../../utils/inputValidations.js");
 const { generatePassword } = require("../../utils/passwordGenerate.js");
-const imageToBlob = require("../../utils/imageToBlob.js");
 const { google } = require("googleapis");
 const { default: axios } = require("axios");
 
@@ -141,14 +139,16 @@ class Auth {
                 username = generateUsername(email);
             }
 
-            const imagePath = path.join(__dirname, "../../../public/default-avatar", "default-avatar-0.jpg");
-            const defaultAvatar = imageToBlob(imagePath);
+            // posix: chuyển thành dấu "/" thay vì "\"
+            const imagePath = `http://localhost:${process.env.SERVER_POST}/static/default-avatar/default-avatar-0.jpg`;
+
+            console.log(imagePath);
 
             conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?,?)", [
                 email,
                 hashedPassword,
                 username,
-                defaultAvatar,
+                imagePath,
                 role,
                 null,
                 null,
@@ -168,7 +168,7 @@ class Auth {
                         refreshTokenExpires: expiredAt,
                     });
 
-                    updatedRes.status(200).json({ ...rest, message: "login" });
+                    updatedRes.status(200).json({ ...rest, message: "register" });
                 })
                 .catch((err) => {
                     if (err.sqlState === 45000 || err.sqlState === 45001) {
