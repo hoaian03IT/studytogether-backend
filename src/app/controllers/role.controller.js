@@ -13,7 +13,7 @@ class Role {
                 })
                 .catch((err) => res.status(400).json({ message: err.message }));
         } catch (error) {
-            res.status(401).json({ message: error.message });
+            res.status(500).json({ message: error.message });
         } finally {
             pool.releaseConnection(conn);
         }
