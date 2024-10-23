@@ -5,10 +5,13 @@ const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const path = require("path");
+const morgan = require("morgan");
 
 const app = express();
 const port = process.env.SERVER_POST || 4000;
 const client_url = process.env.CLIENT_URL;
+
+morgan(":method :url :status :res[content-length] - :response-time ms");
 
 const corsOptions = {
     credentials: true,

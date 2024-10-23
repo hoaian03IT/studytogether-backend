@@ -9,7 +9,7 @@ const timeLog = (req, res, next) => {
 };
 router.use(timeLog);
 
-router.get("/all", [authenticate], VocabularyController.getAllVocabulary);
+router.get("/all/:courseId", [authenticate], VocabularyController.getAllVocabulary);
 router.post("/new", [authenticate], VocabularyController.addNewWord);
 router.post("/edit", [authenticate], VocabularyController.updateWord);
 router.delete("/delete", [authenticate], VocabularyController.deleteWord);

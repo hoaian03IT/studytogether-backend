@@ -6,7 +6,7 @@ class VocabularyControllerClass {
         try {
             conn = await pool.getConnection();
             const { userId } = req.user;
-            const { courseId } = req.body;
+            const { courseId } = req.params;
             if (!courseId) return res.status(404).json({ message: "Not found" });
 
             const [records] = await conn.query("CALL SP_GetAllWords(?, ?)", [courseId, userId]);
