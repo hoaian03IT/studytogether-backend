@@ -56,31 +56,30 @@ class Course {
             const { userId } = req.user;
             const {
                 courseId,
-                name,
-                image,
-                forLanguage,
+                courseName,
+                sourceLanguageId,
+                courseLevelId,
+                tag,
                 shortDescription,
                 detailedDescription,
+                image,
                 isPrivate = false,
-                tag,
-                courseLevelId,
             } = req.body;
 
             if (!courseId || !userId) {
                 res.status(401).json({ messageCode: "MISS_PARAMETER" });
             }
-
             conn.query("CALL SP_UpdateCourseInformation(?,?,?,?,?,?,?,?,?,?)", [
                 userId,
                 courseId,
-                name,
-                image,
-                forLanguage,
+                courseName,
+                sourceLanguageId,
                 courseLevelId,
                 tag,
                 shortDescription,
                 detailedDescription,
-                isPrivate,
+                image,
+                Boolean(isPrivate),
             ])
                 .then((response) => {
                     console.log(response);
@@ -90,8 +89,6 @@ class Course {
                     if (error.sqlState == 45000) {
                         res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
                     } else if (error.sqlState == 45001) {
-                        res.status(404).json({ messageCode: "LANGUAGE_NOT_FOUND" });
-                    } else if (error.sqlState == 45002) {
                         res.status(404).json({ messageCode: "LEVEL_LANGUAGE_NOT_FOUND" });
                     } else {
                         res.status(500).json({ message: error.message });
