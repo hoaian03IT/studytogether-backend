@@ -10,45 +10,40 @@ class Course {
 
             let {
                 courseName,
-                languageTeach,
-                languageFor,
+                sourceLanguageId,
                 courseLevelId,
-                tag,
+                tag = "",
                 shortDescription = "",
                 detailedDescription = "",
                 image,
-                isPrivate = false,
             } = req.body;
 
             const { userId } = req.user;
 
-            const defaultImagePath = path.join(__dirname, "../../../public", "default-course-thumbnail.png");
-            image = imageToBlob(defaultImagePath);
+            const defaultImagePath = `${process.env.SERVER_URL}/static/default-course-thumbnail.png`;
 
-            if (!image) image = defaultImageCourse;
+            if (!image) image = defaultImagePath;
 
-            conn.query("CALL SP_CreateCourse(?,?,?,?,?,?,?,?,?,?)", [
+            conn.query("CALL SP_CreateCourse(?,?,?,?,?,?,?,?)", [
                 userId,
                 courseName,
-                languageTeach,
-                languageFor,
+                sourceLanguageId,
                 courseLevelId,
                 tag,
                 shortDescription,
                 detailedDescription,
                 image,
-                isPrivate,
             ])
                 .then((response) => {
-                    res.status(200).json(response[0][0][0]);
+                    res.status(200).json({ newCourse: response[0][0] });
                 })
                 .catch((err) => {
-                    res.status(400).json({ message: err.message });
+                    res.status(500).json({ message: err.message });
                 });
 
             pool.releaseConnection(conn);
         } catch (error) {
-            res.status(401).json({ message: error.message });
+            res.status(500).json({ message: error.message });
         } finally {
             pool.releaseConnection(conn);
         }
@@ -59,26 +54,51 @@ class Course {
         try {
             conn = await pool.getConnection();
             const { userId } = req.user;
-            const { courseId } = req.query;
-            const { name, image, forLanguage, shortDescription, detailedDescription, isPrivate, tag, level } = req.body;
+            const {
+                courseId,
+                name,
+                image,
+                forLanguage,
+                shortDescription,
+                detailedDescription,
+                isPrivate = false,
+                tag,
+                courseLevelId,
+            } = req.body;
 
-            if (!courseId || !userId)
-                conn.query("CALL SP_UpdateCourseInformation(?,?,?,?,?,?,?,?,?,?)", [
-                    userId,
-                    courseId,
-                    name,
-                    image,
-                    forLanguage,
-                    level,
-                    tag,
-                    shortDescription,
-                    detailedDescription,
-                    isPrivate,
-                ])
-                    .then((response) => res.status(200).json(response[0][0][0]))
-                    .catch((err) => res.status(401).json({ err: err.message }));
+            if (!courseId || !userId) {
+                res.status(401).json({ messageCode: "MISS_PARAMETER" });
+            }
+
+            conn.query("CALL SP_UpdateCourseInformation(?,?,?,?,?,?,?,?,?,?)", [
+                userId,
+                courseId,
+                name,
+                image,
+                forLanguage,
+                courseLevelId,
+                tag,
+                shortDescription,
+                detailedDescription,
+                isPrivate,
+            ])
+                .then((response) => {
+                    console.log(response);
+                    res.status(200).json({ updatedCourse: response[0][0] });
+                })
+                .catch((error) => {
+                    if (error.sqlState == 45000) {
+                        res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
+                    } else if (error.sqlState == 45001) {
+                        res.status(404).json({ messageCode: "LANGUAGE_NOT_FOUND" });
+                    } else if (error.sqlState == 45002) {
+                        res.status(404).json({ messageCode: "LEVEL_LANGUAGE_NOT_FOUND" });
+                    } else {
+                        res.status(500).json({ message: error.message });
+                    }
+                });
         } catch (error) {
-            res.status(401).json({ message: error.message });
+            res.status(500).json({ message: error.message });
         } finally {
             pool.releaseConnection(conn);
         }
@@ -109,8 +129,6 @@ class Course {
             pool.releaseConnection(conn);
         }
     }
-
-    async getCourseList(req, res) {}
 }
 
 module.exports = new Course();

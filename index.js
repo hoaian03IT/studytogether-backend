@@ -11,8 +11,6 @@ const app = express();
 const port = process.env.SERVER_POST || 4000;
 const client_url = process.env.CLIENT_URL;
 
-morgan(":method :url :status :res[content-length] - :response-time ms");
-
 const corsOptions = {
     credentials: true,
     origin: client_url,
@@ -28,6 +26,8 @@ app.use(cookieParser());
 
 // static files: '/static/...'
 app.use("/static", express.static(path.join(__dirname, "public")));
+
+morgan(":method :url :status :response-time ms - :res[content-length]");
 
 // config route
 route(app);

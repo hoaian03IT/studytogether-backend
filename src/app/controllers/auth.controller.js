@@ -122,7 +122,7 @@ class Auth {
             }
 
             // posix: chuyển thành dấu "/" thay vì "\"
-            const imagePath = `http://localhost:${process.env.SERVER_POST}/static/default-avatar/default-avatar-0.jpg`;
+            const imagePath = `${process.env.SERVER_URL}/static/default-avatar/default-avatar-0.jpg`;
 
             console.log(imagePath);
 
