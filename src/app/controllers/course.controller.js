@@ -1,4 +1,5 @@
 const { pool } = require("../../connectDB");
+const cloudinary = require("cloudinary").v2;
 
 class Course {
 	async getCourseInformation(req, res) {
@@ -141,6 +142,14 @@ class Course {
 				image,
 			} = req.body;
 
+			if (image) {
+				const upload = await cloudinary.uploader.upload(image, {
+					asset_folder: "/course-images",
+					tags: [tag],
+					quality: 50,
+				});
+				image = upload.url;
+			}
 
 			const defaultImagePath = `${process.env.SERVER_URL}/static/default-course-thumbnail.png`;
 
@@ -175,7 +184,7 @@ class Course {
 		try {
 			conn = await pool.getConnection();
 			const { userId } = req.user;
-			const {
+			let {
 				courseId,
 				courseName,
 				sourceLanguageId,
@@ -190,6 +199,16 @@ class Course {
 			if (!courseId || !userId) {
 				res.status(401).json({ messageCode: "MISS_PARAMETER" });
 			}
+
+			if (image) {
+				const upload = await cloudinary.uploader.upload(image, {
+					asset_folder: "/course-images",
+					tags: [tag],
+					quality: 50,
+				});
+				image = upload.url;
+			}
+
 			conn.query("CALL SP_UpdateCourseInformation(?,?,?,?,?,?,?,?,?,?)", [
 				userId,
 				courseId,
