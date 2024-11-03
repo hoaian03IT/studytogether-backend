@@ -255,7 +255,7 @@ class Course {
 		let conn;
 		try {
 			conn = await pool.getConnection();
-			const { userId } = req.user;
+			const { "user id": userId } = req.user;
 			const { courseId } = req.params;
 
 			conn.query("CALL SP_DestroyOwnCourse(?, ?)", [courseId, userId])

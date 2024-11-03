@@ -5,7 +5,7 @@ class LevelControllerClass {
 		let conn;
 		try {
 			conn = await pool.getConnection();
-			const { userId } = req.user;
+			const { "user id": userId } = req.user;
 			const { courseId } = req.params;
 
 			if (!courseId) {
@@ -70,7 +70,7 @@ class LevelControllerClass {
 				// MISS_PARAMETER: Thiếu tham số
 				return res.status(404).json({ messageCode: "MISS_PARAMETER" });
 			}
-			
+
 			conn.query("CALL SP_UpdateCourseLevel(?,?,?,?)", [courseId, userId, levelId, levelName])
 				.then((response) => {
 					res.status(200).json({ updatedLevel: response[0][0][0] });
