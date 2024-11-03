@@ -1,4 +1,5 @@
 const { pool } = require("../../connectDB");
+const { uploadImage } = require("../../utils/uploadToCloud");
 const cloudinary = require("cloudinary").v2;
 
 class Course {
@@ -126,6 +127,20 @@ class Course {
 		}
 	}
 
+	async getCourseLanguages(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { "course-id": courseId } = req.query;
+			const response = await conn.query("CALL SP_GetCourseLanguages(?)", [courseId]);
+			res.status(200).json({ ...response[0][0][0] });
+		} catch (error) {
+			res.status(500).json({ message: error.message });
+		} finally {
+			pool.releaseConnection(conn);
+		}
+	}
+
 	async createCourseInformation(req, res) {
 		let conn;
 		try {
@@ -183,7 +198,7 @@ class Course {
 		let conn;
 		try {
 			conn = await pool.getConnection();
-			const { userId } = req.user;
+			const { "user id": userId } = req.user;
 			let {
 				courseId,
 				courseName,
@@ -200,13 +215,9 @@ class Course {
 				res.status(401).json({ messageCode: "MISS_PARAMETER" });
 			}
 
+
 			if (image) {
-				const upload = await cloudinary.uploader.upload(image, {
-					asset_folder: "/course-images",
-					tags: [tag],
-					quality: 50,
-				});
-				image = upload.url;
+				image = await uploadImage(image, [tag]);
 			}
 
 			conn.query("CALL SP_UpdateCourseInformation(?,?,?,?,?,?,?,?,?,?)", [
@@ -222,7 +233,6 @@ class Course {
 				Boolean(isPrivate),
 			])
 				.then((response) => {
-					console.log(response);
 					res.status(200).json({ updatedCourse: response[0][0] });
 				})
 				.catch((error) => {
