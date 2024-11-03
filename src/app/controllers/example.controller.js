@@ -47,7 +47,7 @@ class ExampleControllerClass {
 
 			conn.query("CALL SP_AddNewExample(?,?,?,?,?,?)", [courseId, userId, wordId, title, sentence, explanation])
 				.then((response) => {
-					res.status(200).json({ newExample: response[0][0] });
+					res.status(200).json({ newExample: response[0][0][0] });
 				})
 				.catch((error) => {
 					if (error.sqlState == 45001) {
@@ -69,6 +69,7 @@ class ExampleControllerClass {
 		try {
 			conn = await pool.getConnection();
 			const { courseId, wordId, exampleId, title, sentence, explanation } = req.body;
+			console.log(courseId, wordId, exampleId, title, sentence, explanation);
 			const { "user id": userId } = req.user;
 
 			if (!courseId || !wordId || !title || !sentence)
@@ -84,7 +85,7 @@ class ExampleControllerClass {
 				explanation,
 			])
 				.then((response) => {
-					res.status(200).json({ example: response[0][0] });
+					res.status(200).json({ updatedExample: response[0][0][0] });
 				})
 				.catch((error) => {
 					if (error.sqlState == 45001) {
@@ -105,8 +106,8 @@ class ExampleControllerClass {
 		let conn;
 		try {
 			conn = await pool.getConnection();
-			const { courseId, wordId, exampleId } = req.body;
 			const { "user id": userId } = req.user;
+			const { "course-id": courseId, "word-id": wordId, "example-id": exampleId } = req.query;
 
 			if (!courseId || !wordId || !exampleId) return res.status(404).json({ messageCode: "MISS_PARAMETER" });
 
