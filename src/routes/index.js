@@ -7,6 +7,7 @@ const exampleRoute = require("./example.route.js");
 const userRoute = require("./user.route.js");
 const levelCourseRoute = require("./levelCourse.route.js");
 const languageRoute = require("./language.route.js");
+const exerciseRoute = require("./exercise.route.js");
 
 function route(app) {
 	app.use("/auth", authRoute);
@@ -18,6 +19,7 @@ function route(app) {
 	app.use("/level", levelRoute);
 	app.use("/example", exampleRoute);
 	app.use("/user", userRoute);
+	app.use("/exercise", exerciseRoute);
 }
 
 module.exports = route;
