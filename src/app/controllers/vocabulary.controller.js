@@ -12,13 +12,13 @@ class VocabularyControllerClass {
 			conn = await pool.getConnection();
 			const { "user id": userId } = req.user;
 			const { courseId } = req.params;
-			if (!courseId) return res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
+			if (!courseId) return res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 			conn.query("CALL SP_GetAllWords(?, ?)", [courseId, userId])
 				.then(response => {
 					res.status(200).json({ vocabularyList: response[0][0] });
 				}).catch(error => {
 				if (error.sqlState == 45000) {
-					res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
+					res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 				} else {
 					res.status(500).json({ message: error.message });
 				}

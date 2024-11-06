@@ -11,7 +11,7 @@ class ExerciseController {
 
 
 			if (!courseId) {
-				return res.status(401).json({ messageCode: "MISS_PARAMETER" });
+				return res.status(401).json({ errorCode: "MISS_PARAMETER" });
 			}
 
 			conn.query("CALL SP_GetExerciseByCourse(?,?)", [courseId, userId])
@@ -20,7 +20,7 @@ class ExerciseController {
 				})
 				.catch(error => {
 					if (error.sqlState == 45000) {
-						res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 					} else {
 						res.status(500).json({ error: error.message });
 					}
@@ -41,7 +41,7 @@ class ExerciseController {
 
 
 			if (!courseId || !levelId) {
-				return res.status(401).json({ messageCode: "MISS_PARAMETER" });
+				return res.status(401).json({ errorCode: "MISS_PARAMETER" });
 			}
 
 			conn.query("CALL SP_GetExerciseByLevels(?,?,?)", [courseId, userId, levelId])
@@ -50,7 +50,7 @@ class ExerciseController {
 				})
 				.catch(error => {
 					if (error.sqlState == 45000) {
-						res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 					} else {
 						res.status(500).json({ error: error.message });
 					}
@@ -92,9 +92,9 @@ class ExerciseController {
 				})
 				.catch(error => {
 					if (error.sqlState == 45000) {
-						res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 					} else if (error.sqlState == 45001) {
-						res.status(404).json({ messageCode: "EXERCISE_TYPE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "EXERCISE_TYPE_NOT_FOUND" });
 					} else {
 						res.status(500).json({ error: error.message });
 					}
@@ -136,9 +136,9 @@ class ExerciseController {
 				})
 				.catch(error => {
 					if (error.sqlState == 45000) {
-						res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 					} else if (error.sqlState == 45001) {
-						res.status(404).json({ messageCode: "EXERCISE_TYPE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "EXERCISE_TYPE_NOT_FOUND" });
 					} else {
 						res.status(500).json({ error: error.message });
 					}
@@ -167,9 +167,9 @@ class ExerciseController {
 				})
 				.catch(error => {
 					if (error.sqlState == 45000) {
-						res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 					} else if (error.sqlState == 45001) {
-						res.status(404).json({ messageCode: "EXERCISE_TYPE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "EXERCISE_TYPE_NOT_FOUND" });
 					} else {
 						res.status(500).json({ error: error.message });
 					}

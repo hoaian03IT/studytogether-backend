@@ -200,7 +200,7 @@ class Auth {
 				conn.query("SELECT 1 FROM `refresh tokens` WHERE `user id`=? AND token=?", [userInfo["user id"], refreshToken])
 					.then(response => {
 						if (response[0].length === 0) {
-							return res.status(401).json({ messageCode: "UNAUTHORIZED" });
+							return res.status(401).json({ errorCode: "UNAUTHORIZED" });
 						}
 
 						// xoá token hiện tại

@@ -14,7 +14,7 @@ class Course {
 				})
 				.catch(error => {
 					if (error.sqlState == 45000) {
-						res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 					} else {
 						res.status(500).json({ message: error.message });
 					}
@@ -60,7 +60,7 @@ class Course {
 				})
 				.catch(error => {
 					if (error.sqlState == 45000) {
-						res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 					} else {
 						res.status(500).json({ message: error.message });
 					}
@@ -115,7 +115,7 @@ class Course {
 				})
 				.catch(error => {
 					if (error.sqlState == 45000) {
-						res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 					} else {
 						res.status(500).json({ message: error.message });
 					}
@@ -212,7 +212,7 @@ class Course {
 			} = req.body;
 
 			if (!courseId || !userId) {
-				res.status(401).json({ messageCode: "MISS_PARAMETER" });
+				res.status(401).json({ errorCode: "MISS_PARAMETER" });
 			}
 
 
@@ -237,9 +237,9 @@ class Course {
 				})
 				.catch((error) => {
 					if (error.sqlState == 45000) {
-						res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 					} else if (error.sqlState == 45001) {
-						res.status(404).json({ messageCode: "LEVEL_LANGUAGE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "LEVEL_LANGUAGE_NOT_FOUND" });
 					} else {
 						res.status(500).json({ message: error.message });
 					}

@@ -10,7 +10,7 @@ class LevelControllerClass {
 
 			if (!courseId) {
 				// COURSE_NOT_FOUND: không tìm thấy khoá phù hợp hoặc không sở hữu khoá này
-				return res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
+				return res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 			}
 
 			conn.query("CALL SP_GetCourseLevels(?,?)", [courseId, userId])
@@ -39,7 +39,7 @@ class LevelControllerClass {
 
 			if (!courseId || !levelName) {
 				// MISS_PARAMETER: Thiếu tham số
-				return res.status(404).json({ messageCode: "MISS_PARAMETER" });
+				return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 			}
 
 			conn.query("CALL SP_InsertNewCourseLevel(?,?,?)", [courseId, userId, levelName])
@@ -68,7 +68,7 @@ class LevelControllerClass {
 
 			if (!courseId || !levelName || !levelId) {
 				// MISS_PARAMETER: Thiếu tham số
-				return res.status(404).json({ messageCode: "MISS_PARAMETER" });
+				return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 			}
 
 			conn.query("CALL SP_UpdateCourseLevel(?,?,?,?)", [courseId, userId, levelId, levelName])
@@ -104,7 +104,7 @@ class LevelControllerClass {
 
 			if (!courseId || !levelId) {
 				// MISS_PARAMETER: Thiếu tham số
-				return res.status(404).json({ messageCode: "MISS_PARAMETER" });
+				return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 			}
 
 			conn.query("CALL SP_DisableCourseLevel(?,?,?)", [courseId, userId, levelId])

@@ -8,7 +8,7 @@ class ExampleControllerClass {
 			const { "course-id": courseId, "word-id": wordId } = req.query;
 			const { "user id": userId } = req.user;
 
-			if (!courseId) return res.status(404).json({ messageCode: "MISS_PARAMETER" });
+			if (!courseId) return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 
 			const queryString = wordId
 				? `CALL SP_GetExampleByWord(${courseId},${userId},${wordId})`
@@ -21,9 +21,9 @@ class ExampleControllerClass {
 				.catch((error) => {
 					if (error.sqlState == 45000) {
 						// COURSE_NOT_FOUND: không tìm thấy khoá phù hợp hoặc không sở hữu khoá này
-						res.status(404).json({ messageCode: "COURSE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 					} else if (error.sqlState == 45001) {
-						res.status(404).json({ messageCode: "WORD_NOT_FOUND" });
+						res.status(404).json({ errorCode: "WORD_NOT_FOUND" });
 					} else {
 						res.status(500).json({ error: error.message });
 					}
@@ -43,7 +43,7 @@ class ExampleControllerClass {
 			const { "user id": userId } = req.user;
 
 			if (!courseId || !wordId || !title || !sentence)
-				return res.status(404).json({ messageCode: "MISS_PARAMETER" });
+				return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 
 			conn.query("CALL SP_AddNewExample(?,?,?,?,?,?)", [courseId, userId, wordId, title, sentence, explanation])
 				.then((response) => {
@@ -52,7 +52,7 @@ class ExampleControllerClass {
 				.catch((error) => {
 					if (error.sqlState == 45001) {
 						// COURSE_NOT_FOUND: không tìm thấy khoá phù hợp hoặc không sở hữu khoá này
-						res.status(404).json({ messageCode: "WORD_NOT_FOUND" });
+						res.status(404).json({ errorCode: "WORD_NOT_FOUND" });
 					} else {
 						res.status(500).json({ error: error.message });
 					}
@@ -73,7 +73,7 @@ class ExampleControllerClass {
 			const { "user id": userId } = req.user;
 
 			if (!courseId || !wordId || !title || !sentence)
-				return res.status(404).json({ messageCode: "MISS_PARAMETER" });
+				return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 
 			conn.query("CALL SP_UpdateExample(?,?,?,?,?,?,?)", [
 				courseId,
@@ -90,7 +90,7 @@ class ExampleControllerClass {
 				.catch((error) => {
 					if (error.sqlState == 45001) {
 						// COURSE_NOT_FOUND: không tìm thấy khoá phù hợp hoặc không sở hữu khoá này
-						res.status(404).json({ messageCode: "EXAMPLE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "EXAMPLE_NOT_FOUND" });
 					} else {
 						res.status(500).json({ message: error.message });
 					}
@@ -109,7 +109,7 @@ class ExampleControllerClass {
 			const { "user id": userId } = req.user;
 			const { "course-id": courseId, "word-id": wordId, "example-id": exampleId } = req.query;
 
-			if (!courseId || !wordId || !exampleId) return res.status(404).json({ messageCode: "MISS_PARAMETER" });
+			if (!courseId || !wordId || !exampleId) return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 
 			conn.query("CALL SP_DisableExample(?,?,?,?)", [courseId, userId, wordId, exampleId])
 				.then(() => {
@@ -118,7 +118,7 @@ class ExampleControllerClass {
 				.catch((error) => {
 					if (error.sqlState == 45001) {
 						// COURSE_NOT_FOUND: không tìm thấy khoá phù hợp hoặc không sở hữu khoá này
-						res.status(404).json({ messageCode: "EXAMPLE_NOT_FOUND" });
+						res.status(404).json({ errorCode: "EXAMPLE_NOT_FOUND" });
 					} else {
 						res.status(500).json({ message: error.message });
 					}
