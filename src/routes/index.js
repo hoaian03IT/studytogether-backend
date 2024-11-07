@@ -8,6 +8,8 @@ const userRoute = require("./user.route.js");
 const levelCourseRoute = require("./levelCourse.route.js");
 const languageRoute = require("./language.route.js");
 const exerciseRoute = require("./exercise.route.js");
+const paymentRoute = require("./payment.route.js");
+const enrollmentRoute = require("./enrollment.route.js");
 
 function route(app) {
 	app.use("/auth", authRoute);
@@ -20,6 +22,8 @@ function route(app) {
 	app.use("/example", exampleRoute);
 	app.use("/user", userRoute);
 	app.use("/exercise", exerciseRoute);
+	app.use("/payment", paymentRoute);
+	app.use("/enrollment", enrollmentRoute);
 }
 
 module.exports = route;
