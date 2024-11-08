@@ -31,6 +31,7 @@ app.use(cors(corsOptions));
 app.use(bodyParser.urlencoded({ extended: true, limit: "20mb" }));
 app.use(bodyParser.json({ limit: "20mb" }));
 app.use(cookieParser());
+app.set("trust proxy", true); // cho phép get ip address nếu như sử dụng proxy
 
 // static files: '/static/...'
 app.use("/static", express.static(path.join(__dirname, "public")));

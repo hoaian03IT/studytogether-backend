@@ -1,5 +1,16 @@
 const { get_access_token, endpoint_url } = require("../../payments/paypal/get-access-token");
 const { pool } = require("../../connectDB");
+const { vnpay } = require("../../payments/vnpay/config");
+const { dateFormat, ProductCode, VnpLocale, VerifyReturnUrl } = require("vnpay");
+
+async function getCoursePrices(connection, courseId) {
+	let responsePrice = await connection.query("CALL SP_GetCoursePrice(?)", [courseId]);
+	let { price, discount } = responsePrice[0][0][0];
+	let handledPrice = price * (1 - discount) >= 0 ? price * (1 - discount) : 0;
+
+	return { handledPrice, discount };
+}
+
 
 class PaymentController {
 	async createOrderPaypal(req, res) {
@@ -9,15 +20,13 @@ class PaymentController {
 			let { courseId, currentCode, intent } = req.body;
 			let access_token = await get_access_token();
 			if (access_token) {
-				let responsePrice = await conn.query("CALL SP_GetCoursePrice(?)", [courseId]);
-				let { price, discount } = responsePrice[0][0][0];
-				let realPrice = price * (1 - discount) >= 0 ? price * (1 - discount) : 0;
+				let { handledPrice } = getCoursePrices(conn, courseId);
 				let order_data_json = {
 					"intent": intent.toUpperCase(),
 					"purchase_units": [{
 						"amount": {
 							"currency_code": currentCode,
-							"value": realPrice,
+							"value": handledPrice,
 						},
 					}],
 				};
@@ -66,11 +75,79 @@ class PaymentController {
 						const enrollmentId = responseCreateEnrollment[0][0][0]?.["enrollment id"];
 						const { currency_code, value } = json.purchase_units[0]?.payments?.captures[0].amount;
 						await conn.query("CALL SP_CreateTransaction(?,?,?,?,?)", [enrollmentId, value, currency_code, "paypal", json?.id]);
-						res.status(200).json(json);
+						res.status(200).json({ verify: json });
 					}); //Send minimal data to client
 			}
 		} catch (error) {
 			console.error(error);
+			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+		} finally {
+			pool.releaseConnection(conn);
+		}
+	}
+
+	async createOrderVnPay(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			let { "user id": userId } = req.user;
+			let { paymentContent, courseId, language = "VN" } = req.body;
+
+			let { handledPrice } = await getCoursePrices(conn, courseId);
+
+			const expire = new Date();
+			expire.setTime(expire.getTime() + 1000 * 60 * 60 * 2); // 2 gio
+
+			const clientIpAddr = req.headers["x-forwarded-for"] ||
+				req.connection.remoteAddress ||
+				req.socket.remoteAddress ||
+				req.ip;
+
+			const vnpUrl = vnpay.buildPaymentUrl({
+				vnp_Amount: handledPrice,
+				vnp_IpAddr: clientIpAddr,
+				vnp_TxnRef: new Date().getTime().toString(),
+				vnp_OrderInfo: paymentContent,
+				vnp_OrderType: ProductCode.Pay,
+				vnp_ReturnUrl: `${process.env.SERVER_URL}/payment/vnpay/complete-order?user_id=${userId}&course_id=${courseId}`,
+				vnp_Locale: VnpLocale[language.toUpperCase()], // 'vn' hoặc 'en'
+				vnp_CreateDate: dateFormat(new Date()), // tùy chọn, mặc định là hiện tại
+				vnp_ExpireDate: dateFormat(expire), // tùy chọn
+			}, {
+				withHash: true,
+			});
+
+			res.status(200).json({ vnpUrl });
+		} catch (error) {
+			console.error(
+				error,
+			);
+			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+		} finally {
+			pool.releaseConnection(conn);
+		}
+	}
+
+	async completeOrderVnPay(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { "user_id": userId, "course_id": courseId } = req.query;
+			const verify = vnpay.verifyReturnUrl(req.query);
+
+			if (!verify.isSuccess) {
+				return res.status(400).json({ errorCode: "PAYMENT_FAILED" });
+			}
+			const responseCreateEnrollment = await conn.query("CALL SP_CreateEnrollment(?,?)", [courseId, userId]);
+			const enrollmentId = responseCreateEnrollment[0][0][0]?.["enrollment id"];
+			let currencyCode = "VND", value = verify?.["vnp_Amount"],
+				orderId = `${verify?.["vnp_TxnRef"]}-${verify?.["vnp_TransactionNo"]}`;
+			await conn.query("CALL SP_CreateTransaction(?,?,?,?,?)", [enrollmentId, value, currencyCode, "vnpay", orderId]);
+			res.status(200).json({ verify });
+		} catch (error) {
+			console.error(
+				error,
+			);
 			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
 		} finally {
 			pool.releaseConnection(conn);
