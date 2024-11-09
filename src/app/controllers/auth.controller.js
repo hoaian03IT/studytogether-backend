@@ -119,7 +119,7 @@ class Auth {
 
 			// posix: chuyển thành dấu "/" thay vì "\"
 			const imagePath = `${process.env.SERVER_URL}/static/default-avatar/default-avatar-0.jpg`;
-			
+
 			conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?,?)", [
 				email,
 				hashedPassword,
@@ -288,26 +288,26 @@ class Auth {
 			const { currentPassword, newPassword } = req.body;
 
 			if (!validation.password(currentPassword) || !validation.password(newPassword)) {
-				return res.status(401).json({ message: "Invalid password" });
+				return res.status(406).json({ errorCode: "INVALID_PASSWORD" });
 			}
 
 			const [result] = await conn.query("SELECT  `user id`, hashpassword FROM users WHERE `user id`=?", [userId]);
 
 			if (result.length === 0) {
-				return res.status(401).json({ message: "User does not exist" });
+				return res.status(404).json({ errorCode: "USER_NOT_FOUND" });
 			}
 
 			const isMatch = await bcrypt.compare(currentPassword, result[0].hashpassword);
 			if (!isMatch) {
-				return res.status(401).json({ message: "Your password is incorrect" });
+				return res.status(406).json({ errorCode: "INCORRECT_PASSWORD" });
 			}
 
 			const newHashedPassword = await convertHashedPassword(newPassword);
 			await conn.query("UPDATE users SET hashpassword=? WHERE `user id`=?", [newHashedPassword, userId]);
 
-			res.status(200).json({ message: "Password changed successfully" });
+			res.status(200).json({ messageCode: "CHANGE_PASSWORD_SUCCESS" });
 		} catch (error) {
-			res.status(401).json({ message: error.message });
+			return res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
 		} finally {
 			pool.releaseConnection(conn);
 		}
