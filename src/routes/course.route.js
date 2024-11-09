@@ -13,6 +13,7 @@ router.get("/overview", CourseController.getCourseInformation);
 router.get("/comment", CourseController.getCourseComment);
 router.get("/content", CourseController.getCourseContent);
 router.get("/languages", CourseController.getCourseLanguages);
+router.get("/prices", CourseController.getCoursePrice);
 router.post("/create", [authenticate], CourseController.createCourseInformation);
 router.post("/update", [authenticate], CourseController.updateCourseInformation);
 router.delete("/destroy/:courseId", [authenticate], CourseController.destroyOwnCourse);

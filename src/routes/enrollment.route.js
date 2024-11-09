@@ -10,5 +10,6 @@ const timeLog = (req, res, next) => {
 router.use(timeLog);
 
 router.post("/create-enrollment", [authenticate], EnrollmentController.createEnrollment);
+router.get("/enrollment-information", [authenticate], EnrollmentController.getEnrollmentInfo);
 
 module.exports = router;

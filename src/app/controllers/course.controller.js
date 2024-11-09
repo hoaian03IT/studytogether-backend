@@ -276,6 +276,22 @@ class Course {
 			pool.releaseConnection(conn);
 		}
 	}
+
+	async getCoursePrice(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { "course-id": courseId } = req.query;
+
+			const responseSQl = await conn.query("CALL SP_GetCoursePrice(?)", [courseId]);
+			res.status(200).json({ ...responseSQl[0][0][0] });
+		} catch (error) {
+			console.error(error);
+			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+		} finally {
+			pool.releaseConnection(conn);
+		}
+	}
 }
 
 module.exports = new Course();
