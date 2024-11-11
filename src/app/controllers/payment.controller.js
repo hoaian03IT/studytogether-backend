@@ -2,6 +2,7 @@ const { get_access_token, endpoint_url } = require("../../payments/paypal/get-ac
 const { pool } = require("../../connectDB");
 const { vnpay } = require("../../payments/vnpay/config");
 const { dateFormat, ProductCode, VnpLocale, VerifyReturnUrl } = require("vnpay");
+const connection = require("express");
 
 async function getCoursePrices(connection, courseId) {
 	let responsePrice = await connection.query("CALL SP_GetCoursePrice(?)", [courseId]);
@@ -16,11 +17,22 @@ class PaymentController {
 	async createOrderPaypal(req, res) {
 		let conn;
 		try {
-			conn = pool.getConnection();
+			conn = await pool.getConnection();
+			let { "user id": userId } = req.user;
 			let { courseId, currentCode, intent } = req.body;
+
+			const enrollmentInfo = await conn.query("CALL SP_GetEnrollmentInfo(?,?)", [courseId, userId]);
+
+			if (enrollmentInfo[0][0]?.length > 0) {
+				return res.status(406).json({ errorCode: "COURSE_ENROLLED" });
+			}
+
+			const percentageFee = 0.029; // 2.9% PayPal fee
 			let access_token = await get_access_token();
 			if (access_token) {
-				let { handledPrice } = getCoursePrices(conn, courseId);
+				let { handledPrice } = await getCoursePrices(conn, courseId);
+				handledPrice = handledPrice + handledPrice * percentageFee;
+
 				let order_data_json = {
 					"intent": intent.toUpperCase(),
 					"purchase_units": [{
@@ -30,6 +42,7 @@ class PaymentController {
 						},
 					}],
 				};
+
 				const data = JSON.stringify(order_data_json);
 
 				fetch(endpoint_url + "/v2/checkout/orders", { //https://developer.paypal.com/docs/api/orders/v2/#orders_create
@@ -56,13 +69,13 @@ class PaymentController {
 	async completeOrderPaypal(req, res) {
 		let conn;
 		try {
-			conn = pool.getConnection();
-			const { order_id, intent, courseId } = req.body;
+			conn = await pool.getConnection();
+			const { orderId, intent, courseId } = req.body;
 			const { "user id": userId } = req.user;
 
 			let access_token = await get_access_token();
 			if (access_token) {
-				fetch(endpoint_url + "/v2/checkout/orders/" + order_id + "/" + intent, {
+				fetch(endpoint_url + "/v2/checkout/orders/" + orderId + "/" + intent, {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
@@ -75,12 +88,15 @@ class PaymentController {
 						const enrollmentId = responseCreateEnrollment[0][0][0]?.["enrollment id"];
 						const { currency_code, value } = json.purchase_units[0]?.payments?.captures[0].amount;
 						await conn.query("CALL SP_CreateTransaction(?,?,?,?,?)", [enrollmentId, value, currency_code, "paypal", json?.id]);
-						res.status(200).json({ verify: json });
+						res.status(200).json({ verify: json, messageCode: "PAYMENT_SUCCESS" });
 					}); //Send minimal data to client
 			}
 		} catch (error) {
 			console.error(error);
-			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			if (error.sqlState == 45001)
+				res.status(406).json({ errorCode: "COURSE_ENROLLED" });
+			else
+				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
 		} finally {
 			pool.releaseConnection(conn);
 		}
@@ -92,6 +108,12 @@ class PaymentController {
 			conn = await pool.getConnection();
 			let { "user id": userId } = req.user;
 			let { paymentContent, courseId, language = "VN" } = req.body;
+
+			const enrollmentInfo = await conn.query("CALL SP_GetEnrollmentInfo(?,?)", [courseId, userId]);
+
+			if (enrollmentInfo[0][0]?.length > 0) {
+				return res.status(406).json({ errorCode: "COURSE_ENROLLED" });
+			}
 
 			let { handledPrice } = await getCoursePrices(conn, courseId);
 
@@ -143,7 +165,7 @@ class PaymentController {
 			let currencyCode = "VND", value = verify?.["vnp_Amount"],
 				orderId = `${verify?.["vnp_TxnRef"]}-${verify?.["vnp_TransactionNo"]}`;
 			await conn.query("CALL SP_CreateTransaction(?,?,?,?,?)", [enrollmentId, value, currencyCode, "vnpay", orderId]);
-			res.status(200).json({ verify });
+			res.status(200).send("Thanh toán thành công! (Payment successfully)");
 		} catch (error) {
 			console.error(
 				error,
@@ -153,6 +175,7 @@ class PaymentController {
 			pool.releaseConnection(conn);
 		}
 	}
+
 }
 
 module.exports = new PaymentController();

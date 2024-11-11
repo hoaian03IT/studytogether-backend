@@ -9,8 +9,8 @@ const timeLog = (req, res, next) => {
 };
 router.use(timeLog);
 
-router.post("/paypal/create-order", PaymentController.createOrderPaypal);
-router.post("/paypal/complete-order", PaymentController.completeOrderPaypal);
+router.post("/paypal/create-order", [authenticate], PaymentController.createOrderPaypal);
+router.post("/paypal/complete-order", [authenticate], PaymentController.completeOrderPaypal);
 router.post("/vnpay/create-order", [authenticate], PaymentController.createOrderVnPay);
 router.get("/vnpay/complete-order", PaymentController.completeOrderVnPay);
 module.exports = router;

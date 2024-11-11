@@ -36,7 +36,7 @@ class EnrollmentController {
 			const { "course-id": courseId } = req.query;
 
 			if (!courseId) {
-				return res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
+				return res.status(404).json({ errorCode: "NOT_FOUND" });
 			}
 
 			const responseSql = await conn.query("CALL SP_GetEnrollmentInfo(?,?)", [courseId, userId]);
