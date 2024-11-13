@@ -292,6 +292,41 @@ class Course {
 			pool.releaseConnection(conn);
 		}
 	}
+
+	async updateCoursePrice(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { "user id": userId } = req.user;
+			const {
+				courseId,
+				newPrice,
+				newDiscount,
+				discountFrom = null,
+				discountTo = null,
+				currency = "USD",
+			} = req.body;
+
+			if (!courseId) {
+				res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
+			}
+
+			let responseSql = await conn.query("CALL SP_UpdatePrice(?,?,?,?,?,?,?)", [userId, courseId, newPrice, newDiscount, currency, discountFrom, discountTo]);
+			res.status(200).json({ updatedPrice: responseSql[0][0], messageCode: "UPDATE_SUCCESS" });
+
+
+		} catch (error) {
+			console.error(error);
+			if (error.sqlState == 45000) {
+				res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
+			} else {
+
+				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			}
+		} finally {
+			pool.releaseConnection(conn);
+		}
+	}
 }
 
 module.exports = new Course();
