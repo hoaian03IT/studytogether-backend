@@ -10,5 +10,6 @@ const timeLog = (req, res, next) => {
 router.use(timeLog);
 
 router.get("/me", [authenticate], UserController.getUserInfo);
+router.post("/update-info", [authenticate], UserController.updateUserInfo);
 
 module.exports = router;
