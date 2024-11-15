@@ -11,5 +11,6 @@ router.use(timeLog);
 
 router.get("/me", [authenticate], UserController.getUserInfo);
 router.post("/update-info", [authenticate], UserController.updateUserInfo);
+router.get("/exists-username", UserController.checkExistUsername);
 
 module.exports = router;
