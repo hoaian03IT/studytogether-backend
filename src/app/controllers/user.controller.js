@@ -1,6 +1,5 @@
 const { pool } = require("../../connectDB.js");
 const { uploadImage } = require("../../utils/uploadToCloud");
-const { v2: cloudinary } = require("cloudinary");
 
 class User {
 	async getUserInfo(req, res) {
