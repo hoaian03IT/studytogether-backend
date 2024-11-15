@@ -243,14 +243,14 @@ class Auth {
 			email = email.trim();
 
 			if (!validation.email(email)) {
-				return res.status(401).json({ message: "Invalid email" });
+				return res.status(401).json({ messageCode: "INVALID_EMAIL" });
 			}
 
 			const newPassword = generatePassword();
 			const newHashedPassword = await convertHashedPassword(newPassword);
 
 			conn.query("CALL SP_GetNewPassword(?, ?)", [newHashedPassword, email])
-				.then(async (response) => {
+				.then(async () => {
 					const info = await transporter.sendMail({
 						from: {
 							name: "StudyTogether😊",
@@ -267,13 +267,17 @@ class Auth {
                             <p><strong>StudyTogether</strong></p>
                         `, // html body
 					});
-					res.status(200).json({ message: response[0][0][0].message });
+					res.status(200).json({ messageCode: "RESET_PW_SUCCESS" });
 				})
-				.catch((err) => {
-					res.status(401).json({ message: err.message });
+				.catch((error) => {
+					if (error.sqlState == 45000) {
+						res.status(406).json({ errorCode: "EMAIL_NOT_FOUND" });
+					} else {
+						res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+					}
 				});
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
 		} finally {
 			pool.releaseConnection(conn);
 		}
