@@ -4,6 +4,7 @@ class LearnProcessController {
 	async getLearnNewWords(req, res) {
 		let conn;
 		try {
+			const POINT_PER_QUES = 100;
 			conn = await pool.getConnection();
 			const { "user id": userId } = req.user;
 			const { "ci": courseId } = req.query;
@@ -48,9 +49,10 @@ class LearnProcessController {
 						{
 							template: "multiple-choice",
 							wordId: item?.["word id"],
-							question: item?.["pronunciation"],
-							answer: item?.["definition"],
-							options: pronunciationOptions,
+							question: "",
+							answer: item?.["word"],
+							options: wordOptions,
+							pronunciation: item?.["pronunciation"],
 							image: item?.["image"],
 						},
 						{
@@ -59,11 +61,11 @@ class LearnProcessController {
 							question: item?.["definition"],
 							answer: item?.["word"],
 							options: wordOptions,
-							pronunciation: item?.["pronunciation"],
+							pronunciation: "",
 							image: item?.["image"],
 						},
 						{
-							template: "fill-blank",
+							template: "text",
 							wordId: item?.["word id"],
 							question: item?.["definition"],
 							answer: item?.["word"],
@@ -71,9 +73,9 @@ class LearnProcessController {
 							image: item?.["image"],
 						},
 						{
-							template: "fill-blank",
+							template: "text",
 							wordId: item?.["word id"],
-							question: item?.["definition"],
+							question: "",
 							answer: item?.["word"],
 							pronunciation: item?.["pronunciation"],
 							image: item?.["image"],
@@ -87,7 +89,7 @@ class LearnProcessController {
 					});
 				}
 			}
-			res.status(200).json({ returns });
+			res.status(200).json({ returns, unitPoint: POINT_PER_QUES });
 		} catch (error) {
 			console.error(error);
 			if (error?.sqlState == 45000) {
@@ -100,21 +102,32 @@ class LearnProcessController {
 		}
 	}
 
-	async updateLearnProgress(req, res) {
+	async createLearnProgress(req, res) {
 		let conn;
 		try {
 			conn = await pool.getConnection();
 			const { "user id": userId } = req.user;
-			const { courseId, words = [] } = req.body; // words = [{wordId: number, wrongTimes: number, repeatTimes: number}]
+			const { courseId, words = [], points = 0 } = req.body; // words = [{wordId: number, isWrong: boolean, isRepeat: boolean}]
 
 			for (let word of words) {
-				await conn.query("CALL SP_UpdateCourseProgress(?,?,?,?,?)", [userId, courseId, word?.wordId, word?.wrongTimes, word?.repeatTimes]);
+				let wrongTimes = 0, repeatTime = 0;
+				if (word?.isWrong) {
+					wrongTimes = 2;
+				}
+				if (word?.isRepeat) {
+					repeatTime = 1;
+				}
+				await conn.query("CALL SP_CreateCourseProgress(?,?,?,?,?)", [userId, courseId, word?.wordId, wrongTimes, repeatTime]);
 			}
+
+			// cap nhat diem
+			await conn.query("CALL SP_UpdateUserPoint(?,?,?)", [userId, courseId, points]);
+
 			res.status(200).json({ messageCode: "UPDATED" });
 		} catch (error) {
-			if (error?.sqlState == 45000) {
+			if (error?.sqlState) {
 				console.error(error);
-				res.status(406).json({ errorCode: "NOT_YET_ENROLLMENT" });
+				res.status(406).json({ errorCode: error?.sqlMessage });
 			} else {
 				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
 			}

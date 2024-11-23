@@ -10,6 +10,6 @@ const timeLog = (req, res, next) => {
 router.use(timeLog);
 
 router.get("/new-words", [authenticate], LearnProcessController.getLearnNewWords);
-router.post("/update-progress", [authenticate], LearnProcessController.updateLearnProgress);
+router.post("/update-progress", [authenticate], LearnProcessController.createLearnProgress);
 
 module.exports = router;
