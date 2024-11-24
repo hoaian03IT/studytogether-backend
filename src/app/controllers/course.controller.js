@@ -327,6 +327,26 @@ class Course {
 			pool.releaseConnection(conn);
 		}
 	}
+
+	async getOwnCourses(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { "user id": userId } = req.user;
+
+			let responseSql = await conn.query("CALL SP_GetOwnCourse(?)", [userId]);
+
+			res.status(200).json({ courses: responseSql[0][0] });
+		} catch (error) {
+			if (error?.sqlState) {
+				res.status(406).json({ errorCode: error?.sqlMessage });
+			} else {
+				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			}
+		} finally {
+			pool.releaseConnection(conn);
+		}
+	}
 }
 
 module.exports = new Course();
