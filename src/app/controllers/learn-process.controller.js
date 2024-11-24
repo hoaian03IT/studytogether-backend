@@ -117,7 +117,7 @@ class LearnProcessController {
 				if (word?.isRepeat) {
 					repeatTime = 1;
 				}
-				await conn.query("CALL SP_CreateCourseProgress(?,?,?,?,?)", [userId, courseId, word?.wordId, wrongTimes, repeatTime]);
+				await conn.query("CALL SP_CreateCourseProgress(?,?,?,?,?)", [userId, courseId, word?.wordId, repeatTime, wrongTimes]);
 			}
 
 			// cap nhat diem
