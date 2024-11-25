@@ -47,6 +47,29 @@ class EnrollmentController {
 			pool.releaseConnection(conn);
 		}
 	}
+
+	async stopEnrollment(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { "user id": userId } = req.user;
+			const { courseId } = req.body;
+
+			let responseSql = await conn.query("CALL SP_StopEnrollment(?, ?)", [userId, courseId]);
+
+			res.status(200).json({ messageCode: "COURSE_STOPPED" });
+		} catch (error) {
+			console.error(error);
+
+			if (error.sqlState >= 45000) {
+				res.status(406).json({ errorCode: error.sqlMessage });
+			} else {
+				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			}
+		} finally {
+			pool.releaseConnection(conn);
+		}
+	}
 }
 
 module.exports = new EnrollmentController();

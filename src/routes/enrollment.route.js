@@ -11,5 +11,5 @@ router.use(timeLog);
 
 router.post("/create-enrollment", [authenticate], EnrollmentController.createEnrollment);
 router.get("/enrollment-information", [authenticate], EnrollmentController.getEnrollmentInfo);
-
+router.post("/stop-enrollment", [authenticate], EnrollmentController.stopEnrollment);
 module.exports = router;
