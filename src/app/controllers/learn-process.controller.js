@@ -7,7 +7,7 @@ class LearnProcessController {
 			const POINT_PER_QUES = 100;
 			conn = await pool.getConnection();
 			const { "user id": userId } = req.user;
-			const { "ci": courseId } = req.query;
+			const { ci: courseId } = req.query;
 			let returns = [];
 			let responseSql = await conn.query("CALL SP_LearnNewWords(?,?)", [courseId, userId]);
 			if (responseSql[0][0].length > 0) {
@@ -110,7 +110,8 @@ class LearnProcessController {
 			const { courseId, words = [], points = 0 } = req.body; // words = [{wordId: number, isWrong: boolean, isRepeat: boolean}]
 
 			for (let word of words) {
-				let wrongTimes = 0, repeatTime = 0;
+				let wrongTimes = 0,
+					repeatTime = 0;
 				if (word?.isWrong) {
 					wrongTimes = 2;
 				}
@@ -125,7 +126,7 @@ class LearnProcessController {
 
 			res.status(200).json({ messageCode: "UPDATED" });
 		} catch (error) {
-			if (error?.sqlState) {
+			if (error?.sqlState >= 45000) {
 				console.error(error);
 				res.status(406).json({ errorCode: error?.sqlMessage });
 			} else {

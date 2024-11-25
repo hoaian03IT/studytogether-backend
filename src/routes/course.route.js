@@ -19,5 +19,6 @@ router.post("/update", [authenticate], CourseController.updateCourseInformation)
 router.delete("/destroy/:courseId", [authenticate], CourseController.destroyOwnCourse);
 router.post("/price-update", [authenticate], CourseController.updateCoursePrice);
 router.get("/own-course", [authenticate], CourseController.getOwnCourses);
+router.get("/enrolled-course", [authenticate], CourseController.getEnrolledCourse);
 
 module.exports = router;

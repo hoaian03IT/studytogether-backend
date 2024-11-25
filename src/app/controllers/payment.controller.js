@@ -2,7 +2,6 @@ const { get_access_token, endpoint_url } = require("../../payments/paypal/get-ac
 const { pool } = require("../../connectDB");
 const { vnpay } = require("../../payments/vnpay/config");
 const { dateFormat, ProductCode, VnpLocale, VerifyReturnUrl } = require("vnpay");
-const connection = require("express");
 
 async function getCoursePrices(connection, courseId) {
 	let responsePrice = await connection.query("CALL SP_GetCoursePrice(?)", [courseId]);
@@ -11,7 +10,6 @@ async function getCoursePrices(connection, courseId) {
 
 	return { handledPrice, discount };
 }
-
 
 class PaymentController {
 	async createOrderPaypal(req, res) {
@@ -34,27 +32,30 @@ class PaymentController {
 				handledPrice = handledPrice + handledPrice * percentageFee;
 
 				let order_data_json = {
-					"intent": intent.toUpperCase(),
-					"purchase_units": [{
-						"amount": {
-							"currency_code": currentCode,
-							"value": handledPrice,
+					intent: intent.toUpperCase(),
+					purchase_units: [
+						{
+							amount: {
+								currency_code: currentCode,
+								value: handledPrice,
+							},
 						},
-					}],
+					],
 				};
 
 				const data = JSON.stringify(order_data_json);
 
-				fetch(endpoint_url + "/v2/checkout/orders", { //https://developer.paypal.com/docs/api/orders/v2/#orders_create
+				fetch(endpoint_url + "/v2/checkout/orders", {
+					//https://developer.paypal.com/docs/api/orders/v2/#orders_create
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
-						"Authorization": `Bearer ${access_token}`,
+						Authorization: `Bearer ${access_token}`,
 					},
 					body: data,
 				})
-					.then(res => res.json())
-					.then(json => {
+					.then((res) => res.json())
+					.then((json) => {
 						res.status(200).json(json);
 					}); //Send minimal data to client
 			}
@@ -79,24 +80,21 @@ class PaymentController {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
-						"Authorization": `Bearer ${access_token}`,
+						Authorization: `Bearer ${access_token}`,
 					},
 				})
-					.then(res => res.json())
-					.then(async json => {
-						const responseCreateEnrollment = await conn.query("CALL SP_CreateEnrollment(?,?)", [courseId, userId]);
-						const enrollmentId = responseCreateEnrollment[0][0][0]?.["enrollment id"];
+					.then((res) => res.json())
+					.then(async (json) => {
 						const { currency_code, value } = json.purchase_units[0]?.payments?.captures[0].amount;
-						await conn.query("CALL SP_CreateTransaction(?,?,?,?,?)", [enrollmentId, value, currency_code, "paypal", json?.id]);
+						await conn.query("CALL SP_CreateTransaction(?,?,?,?,?,?)", [userId, courseId, value, currency_code, "paypal", json?.id]);
+						await conn.query("CALL SP_CreateEnrollment(?,?)", [courseId, userId]);
 						res.status(200).json({ verify: json, messageCode: "PAYMENT_SUCCESS" });
 					}); //Send minimal data to client
 			}
 		} catch (error) {
 			console.error(error);
-			if (error.sqlState == 45001)
-				res.status(406).json({ errorCode: "COURSE_ENROLLED" });
-			else
-				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			if (error.sqlState == 45001) res.status(406).json({ errorCode: "COURSE_ENROLLED" });
+			else res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
 		} finally {
 			pool.releaseConnection(conn);
 		}
@@ -120,30 +118,28 @@ class PaymentController {
 			const expire = new Date();
 			expire.setTime(expire.getTime() + 1000 * 60 * 60 * 2); // 2 gio
 
-			const clientIpAddr = req.headers["x-forwarded-for"] ||
-				req.connection.remoteAddress ||
-				req.socket.remoteAddress ||
-				req.ip;
+			const clientIpAddr = req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.socket.remoteAddress || req.ip;
 
-			const vnpUrl = vnpay.buildPaymentUrl({
-				vnp_Amount: handledPrice,
-				vnp_IpAddr: clientIpAddr,
-				vnp_TxnRef: new Date().getTime().toString(),
-				vnp_OrderInfo: paymentContent,
-				vnp_OrderType: ProductCode.Pay,
-				vnp_ReturnUrl: `${process.env.SERVER_URL}/payment/vnpay/complete-order?user_id=${userId}&course_id=${courseId}`,
-				vnp_Locale: VnpLocale[language.toUpperCase()], // 'vn' hoặc 'en'
-				vnp_CreateDate: dateFormat(new Date()), // tùy chọn, mặc định là hiện tại
-				vnp_ExpireDate: dateFormat(expire), // tùy chọn
-			}, {
-				withHash: true,
-			});
+			const vnpUrl = vnpay.buildPaymentUrl(
+				{
+					vnp_Amount: handledPrice,
+					vnp_IpAddr: clientIpAddr,
+					vnp_TxnRef: new Date().getTime().toString(),
+					vnp_OrderInfo: paymentContent,
+					vnp_OrderType: ProductCode.Pay,
+					vnp_ReturnUrl: `${process.env.SERVER_URL}/payment/vnpay/complete-order?user_id=${userId}&course_id=${courseId}`,
+					vnp_Locale: VnpLocale[language.toUpperCase()], // 'vn' hoặc 'en'
+					vnp_CreateDate: dateFormat(new Date()), // tùy chọn, mặc định là hiện tại
+					vnp_ExpireDate: dateFormat(expire), // tùy chọn
+				},
+				{
+					withHash: true,
+				},
+			);
 
 			res.status(200).json({ vnpUrl });
 		} catch (error) {
-			console.error(
-				error,
-			);
+			console.error(error);
 			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
 		} finally {
 			pool.releaseConnection(conn);
@@ -154,28 +150,25 @@ class PaymentController {
 		let conn;
 		try {
 			conn = await pool.getConnection();
-			const { "user_id": userId, "course_id": courseId } = req.query;
+			const { user_id: userId, course_id: courseId } = req.query;
 			const verify = vnpay.verifyReturnUrl(req.query);
 
 			if (!verify.isSuccess) {
 				return res.status(400).json({ errorCode: "PAYMENT_FAILED" });
 			}
-			const responseCreateEnrollment = await conn.query("CALL SP_CreateEnrollment(?,?)", [courseId, userId]);
-			const enrollmentId = responseCreateEnrollment[0][0][0]?.["enrollment id"];
-			let currencyCode = "VND", value = verify?.["vnp_Amount"],
+			let currencyCode = "VND",
+				value = verify?.["vnp_Amount"],
 				orderId = `${verify?.["vnp_TxnRef"]}-${verify?.["vnp_TransactionNo"]}`;
-			await conn.query("CALL SP_CreateTransaction(?,?,?,?,?)", [enrollmentId, value, currencyCode, "vnpay", orderId]);
+			await conn.query("CALL SP_CreateTransaction(?,?,?,?,?,?)", [userId, courseId, value, currencyCode, "vnpay", orderId]);
+			await conn.query("CALL SP_CreateEnrollment(?,?)", [courseId, userId]);
 			res.status(200).send("Thanh toán thành công! (Payment successfully)");
 		} catch (error) {
-			console.error(
-				error,
-			);
+			console.error(error);
 			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
 		} finally {
 			pool.releaseConnection(conn);
 		}
 	}
-
 }
 
 module.exports = new PaymentController();
