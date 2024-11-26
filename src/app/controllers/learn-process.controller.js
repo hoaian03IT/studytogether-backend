@@ -25,62 +25,68 @@ class LearnProcessController {
 						pronunciationOptions.push(pronunciation);
 					});
 
-					let screens = [
-						{
-							template: "definition",
-							wordId: item?.["word id"],
-							word: item?.["word"],
-							definition: item?.["definition"],
-							pronunciation: item?.["pronunciation"],
-							transcript: item?.["transcription"],
-							image: item?.["image"],
-							type: item?.["type"],
-							examples,
-						},
-						{
-							template: "multiple-choice",
-							wordId: item?.["word id"],
-							question: item?.["word"],
-							answer: item?.["definition"],
-							options: definitionOptions,
-							pronunciation: item?.["pronunciation"],
-							image: item?.["image"],
-						},
-						{
-							template: "multiple-choice",
+					let screens = [];
+					// add definition screen
+					screens.push({
+						template: "definition",
+						wordId: item?.["word id"],
+						word: item?.["word"],
+						definition: item?.["definition"],
+						pronunciation: item?.["pronunciation"],
+						transcript: item?.["transcription"],
+						image: item?.["image"],
+						type: item?.["type"],
+						examples,
+					});
+					// add multiple choice screen
+					screens.push({
+						template: "multiple-choice",
+						wordId: item?.["word id"],
+						question: item?.["word"],
+						answer: item?.["definition"],
+						options: definitionOptions,
+						// pronunciation: item?.["pronunciation"],
+						image: item?.["image"],
+					});
+					screens.push({
+						template: "multiple-choice",
+						wordId: item?.["word id"],
+						question: item?.["definition"],
+						answer: item?.["word"],
+						options: wordOptions,
+						pronunciation: "",
+						image: item?.["image"],
+					});
+					if (item?.["pronunciation"]) screens.push({
+						template: "multiple-choice",
+						wordId: item?.["word id"],
+						question: "",
+						answer: item?.["word"],
+						options: wordOptions,
+						pronunciation: item?.["pronunciation"],
+						image: item?.["image"],
+					});
+
+					// add text-input screen
+					screens.push({
+						template: "text",
+						wordId: item?.["word id"],
+						question: item?.["definition"],
+						answer: item?.["word"],
+						// pronunciation: item?.["pronunciation"],
+						image: item?.["image"],
+					});
+
+					if (item?.["pronunciation"])
+						screens.push({
+							template: "text",
 							wordId: item?.["word id"],
 							question: "",
 							answer: item?.["word"],
-							options: wordOptions,
 							pronunciation: item?.["pronunciation"],
 							image: item?.["image"],
-						},
-						{
-							template: "multiple-choice",
-							wordId: item?.["word id"],
-							question: item?.["definition"],
-							answer: item?.["word"],
-							options: wordOptions,
-							pronunciation: "",
-							image: item?.["image"],
-						},
-						{
-							template: "text",
-							wordId: item?.["word id"],
-							question: item?.["definition"],
-							answer: item?.["word"],
-							pronunciation: item?.["pronunciation"],
-							image: item?.["image"],
-						},
-						{
-							template: "text",
-							wordId: item?.["word id"],
-							question: "",
-							answer: item?.["word"],
-							pronunciation: item?.["pronunciation"],
-							image: item?.["image"],
-						},
-					];
+						});
+
 					returns.push({
 						wordId: item?.["word id"],
 						word: item?.["word"],
@@ -107,18 +113,15 @@ class LearnProcessController {
 		try {
 			conn = await pool.getConnection();
 			const { "user id": userId } = req.user;
-			const { courseId, words = [], points = 0 } = req.body; // words = [{wordId: number, isWrong: boolean, isRepeat: boolean}]
+			const { courseId, words = [], points = 0 } = req.body; // words = [{wordId: number, wrongTimes: number, repeatable: boolean}]
 
+			let remainingAppearances = 0;
 			for (let word of words) {
-				let wrongTimes = 0,
-					repeatTime = 0;
-				if (word?.isWrong) {
-					wrongTimes = 2;
+				if (word?.wrongTimes > 0) {
+					remainingAppearances = 5;
 				}
-				if (word?.isRepeat) {
-					repeatTime = 1;
-				}
-				await conn.query("CALL SP_CreateCourseProgress(?,?,?,?,?)", [userId, courseId, word?.wordId, repeatTime, wrongTimes]);
+
+				await conn.query("CALL SP_CreateCourseProgress(?,?,?,?,?,?)", [userId, courseId, word?.wordId, !!word?.repeatable, word?.wrongTimes, remainingAppearances]);
 			}
 
 			// cap nhat diem
@@ -126,8 +129,8 @@ class LearnProcessController {
 
 			res.status(200).json({ messageCode: "UPDATED" });
 		} catch (error) {
+			console.error(error);
 			if (error?.sqlState >= 45000) {
-				console.error(error);
 				res.status(406).json({ errorCode: error?.sqlMessage });
 			} else {
 				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });

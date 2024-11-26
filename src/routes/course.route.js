@@ -14,12 +14,12 @@ router.get("/comment", CourseController.getCourseComment);
 router.get("/content", CourseController.getCourseContent);
 router.get("/languages", CourseController.getCourseLanguages);
 router.get("/prices", CourseController.getCoursePrice);
+router.get("/own-course", [authenticate], CourseController.getOwnCourses);
+router.get("/enrolled-course", [authenticate], CourseController.getEnrolledCourse);
+router.get("/search-course", CourseController.searchCourse);
 router.post("/create", [authenticate], CourseController.createCourseInformation);
 router.post("/update", [authenticate], CourseController.updateCourseInformation);
 router.delete("/destroy/:courseId", [authenticate], CourseController.destroyOwnCourse);
 router.post("/price-update", [authenticate], CourseController.updateCoursePrice);
-router.get("/own-course", [authenticate], CourseController.getOwnCourses);
-router.get("/enrolled-course", [authenticate], CourseController.getEnrolledCourse);
-router.get("/search-course", CourseController.searchCourse);
 
 module.exports = router;
