@@ -3,6 +3,7 @@ const { pool } = require("../../connectDB");
 const { uploadImage } = require("../../utils/uploadToCloud");
 const cloudinary = require("cloudinary").v2;
 
+
 class Course {
 	async getCourseInformation(req, res) {
 		let conn;
@@ -155,7 +156,15 @@ class Course {
 			conn = await pool.getConnection();
 			const { "user id": userId } = req.user;
 
-			let { courseName, sourceLanguageId, courseLevelId, tag = "", shortDescription = "", detailedDescription = "", image } = req.body;
+			let {
+				courseName,
+				sourceLanguageId,
+				courseLevelId,
+				tag = "",
+				shortDescription = "",
+				detailedDescription = "",
+				image,
+			} = req.body;
 
 			if (image) {
 				const upload = await cloudinary.uploader.upload(image, {
@@ -170,7 +179,7 @@ class Course {
 
 			if (!image) image = defaultImagePath;
 
-			conn.query("CALL SP_CreateCourse(?,?,?,?,?,?,?,?)", [
+			let sqlResponse1 = await conn.query("CALL SP_CreateCourse(?,?,?,?,?,?,?,?)", [
 				userId,
 				courseName,
 				sourceLanguageId,
@@ -179,15 +188,19 @@ class Course {
 				shortDescription,
 				detailedDescription,
 				image,
-			])
-				.then((response) => {
-					res.status(200).json({ newCourse: response[0][0] });
-				})
-				.catch((err) => {
-					res.status(500).json({ message: err.message });
-				});
+			]);
+
+			console.log(sqlResponse1[0][0][0]);
+
+			await conn.query("CALL SP_UpdatePrice(?,?,?,?,?,?,?)", [userId, sqlResponse1[0][0][0]?.[`course id`], 0, 0, "USD", null, null]);
+
+			res.status(200).json({ newCourse: sqlResponse1[0][0][0] });
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			console.error(error);
+			if (error?.sqlState >= 45000) {
+				res.status(406).json({ errorCode: error?.sqlMessage });
+			}
+			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
 		} finally {
 			pool.releaseConnection(conn);
 		}
@@ -198,7 +211,17 @@ class Course {
 		try {
 			conn = await pool.getConnection();
 			const { "user id": userId } = req.user;
-			let { courseId, courseName, sourceLanguageId, courseLevelId, tag, shortDescription, detailedDescription, image, isPrivate = false } = req.body;
+			let {
+				courseId,
+				courseName,
+				sourceLanguageId,
+				courseLevelId,
+				tag,
+				shortDescription,
+				detailedDescription,
+				image,
+				isPrivate = false,
+			} = req.body;
 
 			if (!courseId || !userId) {
 				res.status(401).json({ errorCode: "MISS_PARAMETER" });
@@ -290,7 +313,14 @@ class Course {
 		try {
 			conn = await pool.getConnection();
 			const { "user id": userId } = req.user;
-			const { courseId, newPrice, newDiscount, discountFrom = null, discountTo = null, currency = "USD" } = req.body;
+			const {
+				courseId,
+				newPrice,
+				newDiscount,
+				discountFrom = null,
+				discountTo = null,
+				currency = "USD",
+			} = req.body;
 
 			if (!courseId) {
 				res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
@@ -376,6 +406,41 @@ class Course {
 
 			if (error.sqlState >= 45000) {
 				res.status(406).json({ errorCode: error.sqlMessage });
+			} else {
+				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			}
+		} finally {
+			pool.releaseConnection(conn);
+		}
+	}
+
+	async searchCourse(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			let {
+				ts: textSearch = "",
+				t: type = "normal",
+				tli: targetLanguageId = null,
+				sli: sourceLanguageId = null,
+				cli: courseLevelId = null,
+				mip: minPrice = 0,
+				map: maxPrice = 99999,
+				nlm: nLimit = 15,
+				np: nPage = 1,
+			} = req.query; // type=normal || advance
+			let responseSql;
+			if (type === "advance") {
+				responseSql = await conn.query("CALL SP_SearchCourseAdvance(?,?,?,?,?,?,?,?)", [textSearch, targetLanguageId, sourceLanguageId, courseLevelId, minPrice, maxPrice, nLimit, nPage]);
+			} else {
+				responseSql = await conn.query("CALL SP_SearchNameCourse(?,?,?)", [textSearch, nLimit, nPage]);
+			}
+
+			res.status(200).json({ courses: responseSql[0][0] });
+
+		} catch (error) {
+			if (error?.sqlState >= 45000) {
+				res.status(406).json({ errorCode: error?.sqlMessage });
 			} else {
 				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
 			}
