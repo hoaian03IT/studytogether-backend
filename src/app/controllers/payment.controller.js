@@ -2,6 +2,7 @@ const { get_access_token, endpoint_url } = require("../../payments/paypal/get-ac
 const { pool } = require("../../connectDB");
 const { vnpay } = require("../../payments/vnpay/config");
 const { dateFormat, ProductCode, VnpLocale, VerifyReturnUrl } = require("vnpay");
+const axios = require("axios");
 
 async function getCoursePrices(connection, courseId) {
 	let responsePrice = await connection.query("CALL SP_GetCoursePrice(?)", [courseId]);
@@ -113,16 +114,21 @@ class PaymentController {
 				return res.status(406).json({ errorCode: "COURSE_ENROLLED" });
 			}
 
-			let { handledPrice } = await getCoursePrices(conn, courseId);
-
+			let { handledPrice: USDPrice } = await getCoursePrices(conn, courseId);
+			// convert USD to VND real-time
+			let { data } = await axios.get(process.env.EXCHANGE_RATE_API);
+			let VNDPerDollar = data?.["conversion_rates"]?.["VND"];
+			let handledVNDPrice = VNDPerDollar * USDPrice;
+			// ===========
+			
 			const expire = new Date();
-			expire.setTime(expire.getTime() + 1000 * 60 * 60 * 2); // 2 gio
+			expire.setTime(expire.getTime() + 1000 * 60 * 10); // 10 mins
 
 			const clientIpAddr = req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.socket.remoteAddress || req.ip;
 
 			const vnpUrl = vnpay.buildPaymentUrl(
 				{
-					vnp_Amount: handledPrice,
+					vnp_Amount: handledVNDPrice.toFixed(2),
 					vnp_IpAddr: clientIpAddr,
 					vnp_TxnRef: new Date().getTime().toString(),
 					vnp_OrderInfo: paymentContent,

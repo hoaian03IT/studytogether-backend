@@ -8,6 +8,7 @@ const path = require("path");
 const morgan = require("morgan");
 require("./src/config/cloudinary");
 const compression = require("compression");
+const axios = require("axios");
 
 const app = express();
 const port = process.env.SERVER_POST || 4000;
@@ -48,3 +49,9 @@ route(app);
 app.listen(port, () => {
 	console.log(`Example app listening on port ${port}`);
 });
+
+
+let exchangeRateCurrency = axios.get(process.env.EXCHANGE_RATE_API)
+	.then(res => {
+		console.log(res.data?.["conversion_rates"]?.["VND"]);
+	});

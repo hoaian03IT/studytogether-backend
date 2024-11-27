@@ -115,8 +115,8 @@ class LearnProcessController {
 			const { "user id": userId } = req.user;
 			const { courseId, words = [], points = 0 } = req.body; // words = [{wordId: number, wrongTimes: number, repeatable: boolean}]
 
-			let remainingAppearances = 0;
 			for (let word of words) {
+				let remainingAppearances = 0;
 				if (word?.wrongTimes > 0) {
 					remainingAppearances = 5;
 				}
