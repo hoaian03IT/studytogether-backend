@@ -436,7 +436,7 @@ class Course {
 				responseSql = await conn.query("CALL SP_SearchNameCourse(?,?,?)", [textSearch, nLimit, nPage]);
 			}
 
-			res.status(200).json({ courses: responseSql[0][0] });
+			res.status(200).json({ courses: responseSql[0][0], type });
 
 		} catch (error) {
 			if (error?.sqlState >= 45000) {

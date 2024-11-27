@@ -37,7 +37,7 @@ class PaymentController {
 						{
 							amount: {
 								currency_code: currentCode,
-								value: handledPrice,
+								value: handledPrice.toFixed(2),
 							},
 						},
 					],
