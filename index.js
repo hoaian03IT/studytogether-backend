@@ -49,9 +49,3 @@ route(app);
 app.listen(port, () => {
 	console.log(`Example app listening on port ${port}`);
 });
-
-
-let exchangeRateCurrency = axios.get(process.env.EXCHANGE_RATE_API)
-	.then(res => {
-		console.log(res.data?.["conversion_rates"]?.["VND"]);
-	});

@@ -11,5 +11,6 @@ router.use(timeLog);
 
 router.get("/new-words", [authenticate], LearnProcessController.getLearnNewWords);
 router.post("/update-new-words", [authenticate], LearnProcessController.createLearnProgress);
+router.get("/speed-review", [authenticate], LearnProcessController.speedReview);
 
 module.exports = router;
