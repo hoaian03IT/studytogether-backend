@@ -1,6 +1,7 @@
 const e = require("express");
 const { pool } = require("../../connectDB");
 const { uploadImage } = require("../../utils/uploadToCloud");
+const { CommonHelpers } = require("../helpers/commons");
 const cloudinary = require("cloudinary").v2;
 
 
@@ -22,9 +23,9 @@ class Course {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -76,9 +77,9 @@ class Course {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -130,9 +131,9 @@ class Course {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -144,9 +145,9 @@ class Course {
 			const response = await conn.query("CALL SP_GetCourseLanguages(?)", [courseId]);
 			res.status(200).json({ ...response[0][0][0] });
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -196,13 +197,9 @@ class Course {
 
 			res.status(200).json({ newCourse: sqlResponse1[0][0][0] });
 		} catch (error) {
-			console.error(error);
-			if (error?.sqlState >= 45000) {
-				res.status(406).json({ errorCode: error?.sqlMessage });
-			}
-			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -258,9 +255,9 @@ class Course {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -286,9 +283,9 @@ class Course {
 					}
 				});
 		} catch (error) {
-			res.status(401).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -301,10 +298,9 @@ class Course {
 			const responseSQl = await conn.query("CALL SP_GetCoursePrice(?)", [courseId]);
 			res.status(200).json({ ...responseSQl[0][0][0] });
 		} catch (error) {
-			console.error(error);
-			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -340,14 +336,9 @@ class Course {
 				messageCode: "UPDATE_SUCCESS",
 			});
 		} catch (error) {
-			console.error(error);
-			if (error.sqlState == 45000) {
-				res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
-			} else {
-				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
-			}
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -361,13 +352,9 @@ class Course {
 
 			res.status(200).json({ courses: responseSql[0][0] });
 		} catch (error) {
-			if (error?.sqlState >= 45000) {
-				res.status(406).json({ errorCode: error?.sqlMessage });
-			} else {
-				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
-			}
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -402,15 +389,9 @@ class Course {
 
 			res.status(200).json({ incompleteCourses, completeCourses });
 		} catch (error) {
-			console.error(error);
-
-			if (error.sqlState >= 45000) {
-				res.status(406).json({ errorCode: error.sqlMessage });
-			} else {
-				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
-			}
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -439,13 +420,9 @@ class Course {
 			res.status(200).json({ courses: responseSql[0][0], type });
 
 		} catch (error) {
-			if (error?.sqlState >= 45000) {
-				res.status(406).json({ errorCode: error?.sqlMessage });
-			} else {
-				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
-			}
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 }

@@ -1,5 +1,6 @@
 const { pool } = require("../../connectDB.js");
 const { uploadImage } = require("../../utils/uploadToCloud");
+const { CommonHelpers } = require("../helpers/commons");
 
 class User {
 	async getUserInfo(req, res) {
@@ -17,9 +18,9 @@ class User {
 					res.status(500).json(error.message);
 				});
 		} catch (error) {
-			res.status(500).json(error.message);
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -45,14 +46,9 @@ class User {
 			let responseSql = await conn.query("CALL SP_UpdateUserInfo(?,?,?,?,?,?)", [userId, firstName, lastName, phone, username, avatarBase64]);
 			res.status(200).json({ updatedInfo: responseSql[0][0][0], messageCode: "UPDATE_SUCCESS" });
 		} catch (error) {
-			console.error(error);
-			if (error.sqlState == 45000) {
-				res.status(409).json({ errorCode: "UPDATE_USER_INFO_FAILED" });
-			} else {
-				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
-			}
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -68,10 +64,9 @@ class User {
 			else
 				res.status(404).json({});
 		} catch (error) {
-			console.error(error);
-			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 }

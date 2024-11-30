@@ -1,9 +1,6 @@
 const { pool } = require("../../connectDB");
-const { v2: cloudinary } = require("cloudinary");
 const { uploadImage, uploadAudio } = require("../../utils/uploadToCloud");
-
-const uploadImageToCloudinary = () => {
-};
+const { CommonHelpers } = require("../helpers/commons");
 
 class VocabularyControllerClass {
 	async getAllVocabulary(req, res) {
@@ -24,9 +21,9 @@ class VocabularyControllerClass {
 				}
 			});
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -63,9 +60,9 @@ class VocabularyControllerClass {
 					res.status(400).json({ message: err.message });
 				});
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -106,9 +103,9 @@ class VocabularyControllerClass {
 					res.status(400).json({ message: err.message });
 				});
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -128,9 +125,9 @@ class VocabularyControllerClass {
 					res.status(400).json({ message: err.message });
 				});
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 }

@@ -8,41 +8,10 @@ const { validation } = require("../../utils/inputValidations.js");
 const { generatePassword } = require("../../utils/passwordGenerate.js");
 const { google } = require("googleapis");
 const { default: axios } = require("axios");
+const { CommonHelpers } = require("../helpers/commons");
+const { AuthHelper } = require("../helpers/auth.helper");
 
 const oauth2Client = new google.auth.OAuth2();
-
-async function convertHashedPassword(password) {
-	const saltRounds = 10;
-	return await bcrypt.hash(password, saltRounds);
-}
-
-async function generateTokensAndStore(userInfo, conn) {
-	const maxAge = 60 * 60 * 24 * 365 * 1000; // hạn 100 ngày (ms)
-	const accessToken = generateAccessToken({ userId: userInfo["user id"], email: userInfo["email"] });
-	const refreshToken = generateRefreshToken({
-		userId: userInfo["user id"],
-		email: userInfo["email"],
-		expiresIn: maxAge / 1000, // hạn 100 ngày (s)
-	});
-
-	let expiredAt = new Date();
-	expiredAt.setMilliseconds(expiredAt.getMilliseconds() + maxAge);
-
-	// save refresh token to database
-	conn.query("INSERT INTO `refresh tokens` (`user id`, token, `expired at`) VALUE (?, ?, ?);", [
-		userInfo["user id"],
-		refreshToken,
-		expiredAt,
-	]).catch((err) => {
-		throw new Error(err);
-	});
-	return { refreshToken, accessToken, maxAge };
-}
-
-function generateUsername(email) {
-	const hash = crypto.createHash("md5").update(email).digest("hex").slice(0, 6); // Take first 6 characters of the hash
-	return `${email.split("@")[0]}_${hash}`;
-}
 
 class Auth {
 	async login(req, res) {
@@ -52,11 +21,11 @@ class Auth {
 			const { usernameOrEmail, password } = req.body;
 
 			if (!validation.email(usernameOrEmail) && !validation.username(usernameOrEmail)) {
-				return res.status(401).json({ message: "Invalid account." });
+				return res.status(401).json({ messageCode: "INVALID_ACCOUNT" });
 			}
 
 			if (!validation.password(password)) {
-				return res.status(401).json({ message: "Invalid password." });
+				return res.status(401).json({ messageCode: "INVALID_PASSWORD" });
 			}
 
 			conn.query("CALL SP_GetUserAccount(?)", [usernameOrEmail])
@@ -64,11 +33,15 @@ class Auth {
 					const userInfo = result[0][0];
 					const isMatchP = await bcrypt.compare(password, userInfo["hashpassword"]);
 					if (!isMatchP) {
-						res.status(401).json({ message: "Incorrect account or password." });
+						res.status(401).json({ messageCode: "INCORRECT_ACCOUNT/PASSWORD" });
 						return;
 					}
 
-					const { accessToken, refreshToken, maxAge } = await generateTokensAndStore(userInfo, conn);
+					const {
+						accessToken,
+						refreshToken,
+						maxAge,
+					} = await AuthHelper.generateTokens(userInfo, conn);
 
 					const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
 
@@ -78,15 +51,15 @@ class Auth {
 						secure: true,
 					})
 						.status(200)
-						.json({ ...rest, message: "login" });
+						.json({ ...rest, messageCode: "LOGIN_SUCCESS" });
 				})
 				.catch((err) => {
-					res.status(401).json({ message: err.message });
+					CommonHelpers.handleError(err, res);
 				});
 		} catch (error) {
-			res.status(401).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -96,15 +69,15 @@ class Auth {
 			const { email, password, role } = req.body;
 
 			if (!validation.email(email)) {
-				return res.status(401).json({ message: "Invalid email" });
+				return res.status(401).json({ message: "INVALID_ACCOUNT" });
 			}
 
 			if (!validation.password(password)) {
-				return res.status(401).json({ message: "Invalid password" });
+				return res.status(401).json({ message: "INVALID_PASSWORD" });
 			}
 
 			let username = email.split("@")[0];
-			const hashedPassword = await convertHashedPassword(password);
+			const hashedPassword = await AuthHelper.convertHashedPassword(password);
 
 			conn = await pool.getConnection();
 
@@ -114,7 +87,7 @@ class Auth {
 			);
 
 			if (records.length > 0) {
-				username = generateUsername(email);
+				username = AuthHelper.generateUsername(email);
 			}
 
 			// posix: chuyển thành dấu "/" thay vì "\"
@@ -134,7 +107,11 @@ class Auth {
 				.then(async ([response]) => {
 					const userInfo = response[0][0];
 
-					const { accessToken, refreshToken, maxAge } = await generateTokensAndStore(userInfo, conn);
+					const {
+						accessToken,
+						refreshToken,
+						maxAge,
+					} = await AuthHelper.generateTokens(userInfo, conn);
 
 					const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
 
@@ -144,20 +121,15 @@ class Auth {
 						secure: true,
 					})
 						.status(200)
-						.json({ ...rest, message: "register" });
+						.json({ ...rest, messageCode: "REGISTER_SUCCESS" });
 				})
 				.catch((err) => {
-					if (err.sqlState === 45000 || err.sqlState === 45001) {
-						res.status(400).json({ message: err.sqlMessage });
-					} else {
-						// không show lỗi khi hoàn tất
-						res.status(400).json({ message: err.message });
-					}
+					CommonHelpers.handleError(err, res);
 				});
 		} catch (error) {
-			res.status(401).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -172,16 +144,15 @@ class Auth {
 					// clear cookie từ client
 					res.clearCookie("refresh_token");
 
-					res.status(200).json({ message: "Đăng xuất thành công" });
+					res.status(200).json({ messageCode: "LOGOUT_SUCCESS" });
 				})
 				.catch((err) => {
-					res.status(400).json({ message: err.message });
+					CommonHelpers.handleError(err, res);
 				});
-			pool.releaseConnection(conn);
 		} catch (error) {
-			res.status(401).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -194,7 +165,8 @@ class Auth {
 
 			jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err, userInfo) => {
 				if (err) {
-					return res.status(401).json({ message: err.message });
+					CommonHelpers.handleError(err, res);
+					return;
 				}
 
 				conn.query("SELECT 1 FROM `refresh tokens` WHERE `user id`=? AND token=?", [userInfo["user id"], refreshToken])
@@ -210,7 +182,7 @@ class Auth {
 									accessToken,
 									refreshToken: newRefreshToken,
 									maxAge,
-								} = await generateTokensAndStore(userInfo, conn);
+								} = await AuthHelper.generateTokens(userInfo, conn);
 
 								res.cookie("refresh_token", newRefreshToken, {
 									maxAge: maxAge,
@@ -218,10 +190,10 @@ class Auth {
 									secure: true,
 								})
 									.status(200)
-									.json({ message: "refreshed token", token: accessToken });
+									.json({ messageCode: "REFRESH_TOKEN", token: accessToken });
 							})
 							.catch((err) => {
-								res.status(400).json({ message: err.message });
+								CommonHelpers.handleError(err, res);
 							});
 
 					});
@@ -229,9 +201,9 @@ class Auth {
 
 			});
 		} catch (error) {
-			res.status(401).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -247,7 +219,7 @@ class Auth {
 			}
 
 			const newPassword = generatePassword();
-			const newHashedPassword = await convertHashedPassword(newPassword);
+			const newHashedPassword = await AuthHelper.convertHashedPassword(newPassword);
 
 			conn.query("CALL SP_GetNewPassword(?, ?)", [newHashedPassword, email])
 				.then(async () => {
@@ -277,9 +249,9 @@ class Auth {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -306,14 +278,14 @@ class Auth {
 				return res.status(406).json({ errorCode: "INCORRECT_PASSWORD" });
 			}
 
-			const newHashedPassword = await convertHashedPassword(newPassword);
+			const newHashedPassword = await AuthHelper.convertHashedPassword(newPassword);
 			await conn.query("UPDATE users SET hashpassword=? WHERE `user id`=?", [newHashedPassword, userId]);
 
 			res.status(200).json({ messageCode: "CHANGE_PASSWORD_SUCCESS" });
 		} catch (error) {
-			return res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -338,7 +310,11 @@ class Auth {
 			conn.query("CALL SP_GetUserAccountByGoogleId(?,?)", [email, sub])
 				.then(async ([response]) => {
 					const userInfo = response[0][0];
-					const { accessToken, refreshToken, maxAge } = await generateTokensAndStore(userInfo, conn);
+					const {
+						accessToken,
+						refreshToken,
+						maxAge,
+					} = await AuthHelper.generateTokens(userInfo, conn);
 
 					const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
 
@@ -363,10 +339,10 @@ class Auth {
 					);
 
 					if (records.length > 0) {
-						username = generateUsername(email);
+						username = AuthHelper.generateUsername(email);
 					}
 
-					const hashedPassword = await convertHashedPassword(sub);
+					const hashedPassword = await AuthHelper.convertHashedPassword(sub);
 					conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?,?)", [
 						email,
 						hashedPassword,
@@ -381,7 +357,11 @@ class Auth {
 						.then(async ([response]) => {
 							const userInfo = response[0][0];
 
-							const { accessToken, refreshToken, maxAge } = await generateTokensAndStore(userInfo, conn);
+							const {
+								accessToken,
+								refreshToken,
+								maxAge,
+							} = await AuthHelper.generateTokens(userInfo, conn);
 
 							const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
 
@@ -394,18 +374,13 @@ class Auth {
 								.json({ ...rest, message: "register" });
 						})
 						.catch((err) => {
-							if (err.sqlState === 45000 || err.sqlState === 45001) {
-								res.status(400).json({ message: err.sqlMessage });
-							} else {
-								// không show lỗi khi hoàn tất
-								res.status(400).json({ message: err.message });
-							}
+							CommonHelpers.handleError(err, res);
 						});
 				});
 		} catch (error) {
-			res.status(403).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -425,7 +400,11 @@ class Auth {
 			conn.query("CALL SP_GetUserAccountByFacebookId(?,?)", [email, idFB])
 				.then(async ([response]) => {
 					const userInfo = response[0][0];
-					const { accessToken, refreshToken, maxAge } = await generateTokensAndStore(userInfo, conn);
+					const {
+						accessToken,
+						refreshToken,
+						maxAge,
+					} = await AuthHelper.generateTokens(userInfo, conn);
 
 					const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
 
@@ -450,10 +429,10 @@ class Auth {
 					);
 
 					if (records.length > 0) {
-						username = generateUsername(email);
+						username = AuthHelper.generateUsername(email);
 					}
 
-					const hashedPassword = await convertHashedPassword(idFB);
+					const hashedPassword = await AuthHelper.convertHashedPassword(idFB);
 					conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?,?)", [
 						email,
 						hashedPassword,
@@ -468,7 +447,11 @@ class Auth {
 						.then(async ([response]) => {
 							const userInfo = response[0][0];
 
-							const { accessToken, refreshToken, maxAge } = await generateTokensAndStore(userInfo, conn);
+							const {
+								accessToken,
+								refreshToken,
+								maxAge,
+							} = await AuthHelper.generateTokens(userInfo, conn);
 
 							const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
 
@@ -481,18 +464,13 @@ class Auth {
 								.json({ ...rest, message: "register" });
 						})
 						.catch((err) => {
-							if (err.sqlState === 45000 || err.sqlState === 45001) {
-								res.status(400).json({ message: err.sqlMessage });
-							} else {
-								// không show lỗi khi hoàn tất
-								res.status(400).json({ message: err.message });
-							}
+							CommonHelpers.handleError(err, res);
 						});
 				});
 		} catch (error) {
-			res.status(403).json({ error: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 }

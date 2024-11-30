@@ -1,5 +1,6 @@
 const { pool } = require("../../connectDB");
 const { uploadImage, uploadAudio } = require("../../utils/uploadToCloud");
+const { CommonHelpers } = require("../helpers/commons");
 
 class ExerciseController {
 	async getExerciseByCourse(req, res) {
@@ -26,9 +27,9 @@ class ExerciseController {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ error: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -56,9 +57,9 @@ class ExerciseController {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ error: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -100,9 +101,9 @@ class ExerciseController {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ error: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -144,9 +145,9 @@ class ExerciseController {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ error: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -160,7 +161,7 @@ class ExerciseController {
 				"level-id": levelId,
 				"exercise-id": exerciseId,
 			} = req.query;
-			
+
 			conn.query("CALL SP_DisableExercise(?,?,?,?)", [courseId, userId, levelId, exerciseId])
 				.then(() => {
 					res.status(200).json({ messageCode: "DELETE_EXERCISE_SUCCESS" });
@@ -175,9 +176,9 @@ class ExerciseController {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ error: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 }

@@ -1,4 +1,5 @@
 const { pool } = require("../../connectDB");
+const { CommonHelpers } = require("../helpers/commons");
 
 class LevelControllerClass {
 	async getAllLevels(req, res) {
@@ -24,9 +25,9 @@ class LevelControllerClass {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ error: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -53,9 +54,9 @@ class LevelControllerClass {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ error: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -87,9 +88,9 @@ class LevelControllerClass {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ error: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -118,9 +119,9 @@ class LevelControllerClass {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ error: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 }

@@ -3,6 +3,7 @@ const { pool } = require("../../connectDB");
 const { vnpay } = require("../../payments/vnpay/config");
 const { dateFormat, ProductCode, VnpLocale, VerifyReturnUrl } = require("vnpay");
 const axios = require("axios");
+const { CommonHelpers } = require("../helpers/commons");
 
 async function getCoursePrices(connection, courseId) {
 	let responsePrice = await connection.query("CALL SP_GetCoursePrice(?)", [courseId]);
@@ -61,10 +62,9 @@ class PaymentController {
 					}); //Send minimal data to client
 			}
 		} catch (error) {
-			console.error(error);
-			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -93,11 +93,9 @@ class PaymentController {
 					}); //Send minimal data to client
 			}
 		} catch (error) {
-			console.error(error);
-			if (error.sqlState == 45001) res.status(406).json({ errorCode: "COURSE_ENROLLED" });
-			else res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -120,7 +118,7 @@ class PaymentController {
 			let VNDPerDollar = data?.["conversion_rates"]?.["VND"];
 			let handledVNDPrice = VNDPerDollar * USDPrice;
 			// ===========
-			
+
 			const expire = new Date();
 			expire.setTime(expire.getTime() + 1000 * 60 * 10); // 10 mins
 
@@ -145,10 +143,9 @@ class PaymentController {
 
 			res.status(200).json({ vnpUrl });
 		} catch (error) {
-			console.error(error);
-			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -169,10 +166,9 @@ class PaymentController {
 			await conn.query("CALL SP_CreateEnrollment(?,?)", [courseId, userId]);
 			res.status(200).send("Thanh toán thành công! (Payment successfully)");
 		} catch (error) {
-			console.error(error);
-			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 }

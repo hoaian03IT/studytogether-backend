@@ -1,4 +1,5 @@
 const { pool } = require("../../connectDB");
+const { CommonHelpers } = require("../helpers/commons");
 
 class EnrollmentController {
 	async createEnrollment(req, res) {
@@ -15,15 +16,9 @@ class EnrollmentController {
 			const responseSql = await conn.query("CALL SP_CreateEnrollment(?,?)", [courseId, userId]);
 			res.status(200).json({ ...responseSql[0][0][0] });
 		} catch (error) {
-			console.error(error);
-
-			if (error?.sqlState >= 45000) {
-				res.status(404).json({ errorCode: error?.sqlMessage });
-			} else {
-				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
-			}
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -41,10 +36,9 @@ class EnrollmentController {
 			const responseSql = await conn.query("CALL SP_GetEnrollmentInfo(?,?)", [courseId, userId]);
 			res.status(200).json({ ...responseSql[0][0][0] });
 		} catch (error) {
-			console.error(error);
-			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -59,15 +53,9 @@ class EnrollmentController {
 
 			res.status(200).json({ messageCode: "COURSE_STOPPED" });
 		} catch (error) {
-			console.error(error);
-
-			if (error.sqlState >= 45000) {
-				res.status(406).json({ errorCode: error.sqlMessage });
-			} else {
-				res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
-			}
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 }

@@ -1,4 +1,5 @@
 const { pool } = require("../../connectDB");
+const { CommonHelpers } = require("../helpers/commons");
 
 class ExampleControllerClass {
 	async getAllExamplesByCourse(req, res) {
@@ -29,9 +30,9 @@ class ExampleControllerClass {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -58,9 +59,9 @@ class ExampleControllerClass {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -96,9 +97,9 @@ class ExampleControllerClass {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
@@ -124,9 +125,9 @@ class ExampleControllerClass {
 					}
 				});
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			CommonHelpers.handleError(error, res);
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 }
