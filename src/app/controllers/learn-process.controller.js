@@ -120,7 +120,7 @@ class LearnProcessController {
 
 
 			await Promise.all(words.map(async (word) => {
-				let remainingAppearances = word?.wrongTimes < 0 ? 0 : word?.wrongTimes === 0 ? -1 : 1; //
+				let remainingAppearances = word?.wrongTimes < 0 ? 0 : word?.wrongTimes === 0 ? -1 : 0; //
 				// wrongTimes = -1 (không cập nhật wrongTimes & appearances, chỉ cập nhật repeatable)
 				// wrongTimes = 0 (cập nhật giảm 1 lần remaining appearances trong lần review tới)
 				// wrongTimes > 1 (cập nhật tăng thêm 1 lần remaining appearances trong lần review tới)
