@@ -10,6 +10,7 @@ require("./src/config/cloudinary");
 const compression = require("compression");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
+const { pool } = require("./src/connectDB");
 
 const app = express();
 const port = process.env.SERVER_POST || 4000;
@@ -75,8 +76,8 @@ socketIo.on("connection", (socket) => { ///Handle khi có connect từ client t�
 		userSockets.set(username, socket.id);
 	});
 
-	socket.on("course-enrollment", (data) => {
-		console.log(data);
+	socket.on("course-enrollment", ({ enrollmentId }) => {
+		console.log({ enrollmentId });
 	});
 
 	socket.on("disconnect", () => {
@@ -94,3 +95,20 @@ socketIo.on("connection", (socket) => { ///Handle khi có connect từ client t�
 httpServer.listen(3000, () => {
 	console.log("Socket server listening on port 3000");
 });
+
+pool.getConnection()
+	.then(conn => {
+		conn.query("CALL SP_CreateNotification(1, 'This is test text', 'system')").then(res => {
+			console.log(res[0]);
+		})
+			.catch(error => {
+				console.log(error);
+			}).finally(async () => {
+			await pool.releaseConnection(conn);
+		});
+	})
+	.catch(error => {
+		console.log(error);
+	})
+	.finally(() => {
+	});

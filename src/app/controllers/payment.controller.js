@@ -88,9 +88,16 @@ class PaymentController {
 					.then(async (json) => {
 						const { currency_code, value } = json.purchase_units[0]?.payments?.captures[0].amount;
 						await conn.query("CALL SP_CreateTransaction(?,?,?,?,?,?)", [userId, courseId, value, currency_code, "paypal", json?.id]);
-						await conn.query("CALL SP_CreateEnrollment(?,?)", [courseId, userId]);
-						res.status(200).json({ verify: json, messageCode: "PAYMENT_SUCCESS" });
-					}); //Send minimal data to client
+						const responseSql = await conn.query("CALL SP_CreateEnrollment(?,?)", [courseId, userId]);
+						res.status(200).json({
+							verify: json,
+							enrollmentId: responseSql[0][0][0]?.["enrollment id"],
+							messageCode: "PAYMENT_SUCCESS",
+						});
+					}) //Send minimal data to client
+					.catch(error => {
+						CommonHelpers.handleError(error, res);
+					});
 			}
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
