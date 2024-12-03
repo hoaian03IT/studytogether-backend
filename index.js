@@ -8,8 +8,7 @@ const path = require("path");
 const morgan = require("morgan");
 require("./src/config/cloudinary");
 const compression = require("compression");
-const { createServer } = require("http");
-const { Server } = require("socket.io");
+const axios = require("axios");
 
 const app = express();
 const port = process.env.SERVER_POST || 4000;
@@ -32,7 +31,8 @@ app.use(bodyParser.json({ limit: "20mb" }));
 // parse cookies
 app.use(cookieParser());
 
-// cho phép get ip address nếu như sử dụng proxy
+// cho phép get ip
+ //address nếu như sử dụng proxy
 app.set("trust proxy", true);
 
 // static files: 'base_url/static/...'
@@ -48,49 +48,5 @@ app.use(compression());
 route(app);
 
 app.listen(port, () => {
-	console.log(`The system listening on port ${port}`);
-});
-
-
-const httpServer = createServer(app);
-const socketIo = new Server(httpServer, {
-	cors: {
-		origin: "*",
-	},
-});
-
-const userSockets = new Map();
-
-socketIo.on("connection", (socket) => { ///Handle khi có connect từ client tới
-	const count = socketIo.engine.clientsCount;
-	console.group("-SOCKET-");
-	console.log("New client connected: " + socket.id);
-	console.log("Current joining user: " + count);
-	console.groupEnd();
-
-	socket.emit("online-users", { onlineUser: count });
-
-	// luu username cua user so voi id socket
-	socket.on("register", (username) => {
-		userSockets.set(username, socket.id);
-	});
-
-	socket.on("course-enrollment", (data) => {
-		console.log(data);
-	});
-
-	socket.on("disconnect", () => {
-		console.log("Client disconnected"); // Khi client disconnect thì log ra terminal.
-		for (const [username, socketId] of userSockets.entries()) {
-			if (socketId === socket.id) {
-				userSockets.delete(username);
-				console.log(`User disconnected: ${username}`);
-				break;
-			}
-		}
-	});
-});
-
-httpServer.listen(3000, () => {
-	console.log("Socket server listening on port 3000");
+	console.log(`Example app listening on port ${port}`);
 });
