@@ -278,7 +278,7 @@ class Course {
 					if (err.sqlCode === 45000 || err.sqlCode === 45001) {
 						res.status(401).json({ message: err.message });
 					} else {
-						// ở đây sẽ thông báo lỗi server
+
 						res.status(401).json({ message: err.message });
 					}
 				});
