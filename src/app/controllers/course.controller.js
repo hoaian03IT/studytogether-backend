@@ -371,6 +371,7 @@ class Course {
 
 			for (let record of responseSql1[0][0]) {
 				let responseSq2 = await conn.query("CALL SP_GetProgressEnrollment(?)", [record?.["enrollment id"]]);
+				console.log(responseSq2[0][0][0]);
 				let { "total words": totalWords, "learnt words": learntWords } = responseSq2[0][0][0];
 				if (totalWords === learntWords) {
 					completeCourses.push({

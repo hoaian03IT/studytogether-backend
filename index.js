@@ -11,6 +11,7 @@ const compression = require("compression");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 const { pool } = require("./src/connectDB");
+const { NotificationController } = require("./src/app/controllers/notification.controller");
 
 const app = express();
 const port = process.env.SERVER_POST || 4000;
@@ -64,20 +65,26 @@ const userSockets = new Map();
 
 socketIo.on("connection", (socket) => { ///Handle khi có connect từ client tới
 	const count = socketIo.engine.clientsCount;
-	console.group("-SOCKET-");
-	console.log("New client connected: " + socket.id);
-	console.log("Current joining user: " + count);
-	console.groupEnd();
-
 	socket.emit("online-users", { onlineUser: count });
 
 	// luu username cua user so voi id socket
-	socket.on("register", (username) => {
+	socket.on("register", ({ username }) => {
 		userSockets.set(username, socket.id);
+		console.log(`Registered user: ${username} with socket ID: ${socket.id}`);
+		console.log("Current userSockets:", [...userSockets.entries()]);
 	});
 
-	socket.on("course-enrollment", ({ enrollmentId }) => {
-		console.log({ enrollmentId });
+	socket.on("course-enrollment", async ({ enrollmentId }) => {
+		const {
+			notificationId,
+			ownerUsername,
+		} = await NotificationController.createNotificationCourseRegistration(enrollmentId);
+
+		let socketId = userSockets.get(ownerUsername);
+
+		if (userSockets.get(ownerUsername)) {
+			socket.to(socketId).emit("receive-notification", notificationId);
+		}
 	});
 
 	socket.on("disconnect", () => {
@@ -95,20 +102,3 @@ socketIo.on("connection", (socket) => { ///Handle khi có connect từ client t�
 httpServer.listen(3000, () => {
 	console.log("Socket server listening on port 3000");
 });
-
-pool.getConnection()
-	.then(conn => {
-		conn.query("CALL SP_CreateNotification(1, 'This is test text', 'system')").then(res => {
-			console.log(res[0]);
-		})
-			.catch(error => {
-				console.log(error);
-			}).finally(async () => {
-			await pool.releaseConnection(conn);
-		});
-	})
-	.catch(error => {
-		console.log(error);
-	})
-	.finally(() => {
-	});

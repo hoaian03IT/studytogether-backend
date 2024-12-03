@@ -11,6 +11,7 @@ const exerciseRoute = require("./exercise.route.js");
 const paymentRoute = require("./payment.route.js");
 const enrollmentRoute = require("./enrollment.route.js");
 const learnProcessRoute = require("./learn-process.route.js");
+const notificationRoute = require("./notification.route.js");
 
 function route(app) {
 	app.use("/auth", authRoute);
@@ -26,6 +27,7 @@ function route(app) {
 	app.use("/payment", paymentRoute);
 	app.use("/enrollment", enrollmentRoute);
 	app.use("/learn", learnProcessRoute);
+	app.use("/notification", notificationRoute);
 }
 
 module.exports = route;
