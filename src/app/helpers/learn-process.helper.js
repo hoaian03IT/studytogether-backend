@@ -1,5 +1,3 @@
-const { blendArray } = require("../../utils/blend-array");
-
 class LearnProcessHelper {
 	/**
 	 * Helper function to generate screens for a word
@@ -17,7 +15,7 @@ class LearnProcessHelper {
 				answer: word.definition,
 				options: definitionOptions,
 				image: word.image,
-				duration: timer ? 5 : null,
+				duration: timer ? 6 : null,
 				pronunciation: word?.pronunciation,
 			},
 			{
@@ -27,7 +25,7 @@ class LearnProcessHelper {
 				answer: word.word,
 				options: wordOptions,
 				image: word.image,
-				duration: timer ? 5 : null,
+				duration: timer ? 6 : null,
 				pronunciation: word?.pronunciation,
 			},
 			{
@@ -36,7 +34,7 @@ class LearnProcessHelper {
 				question: word.definition,
 				answer: word.word,
 				image: word.image,
-				duration: timer ? 8 : null,
+				duration: timer ? 10 : null,
 				pronunciation: word?.pronunciation,
 			},
 		];
@@ -52,7 +50,7 @@ class LearnProcessHelper {
 					options: wordOptions,
 					pronunciation: word.pronunciation,
 					image: word.image,
-					duration: timer ? 5 : null,
+					duration: timer ? 6 : null,
 				},
 				{
 					template: "text",
@@ -61,7 +59,7 @@ class LearnProcessHelper {
 					answer: word.word,
 					pronunciation: word.pronunciation,
 					image: word.image,
-					duration: timer ? 8 : null,
+					duration: timer ? 10 : null,
 				},
 				{
 					template: "definition",
