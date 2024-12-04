@@ -12,6 +12,7 @@ const { createServer } = require("http");
 const { Server } = require("socket.io");
 const { pool } = require("./src/connectDB");
 const { NotificationController } = require("./src/app/controllers/notification.controller");
+const { ReminderController } = require("./src/app/controllers/reminder.controller");
 
 const app = express();
 const port = process.env.SERVER_POST || 4000;
@@ -49,6 +50,11 @@ app.use(compression());
 // config route
 route(app);
 
+// instance reminder controller
+new ReminderController({
+	batchSize: 100,
+});
+
 app.listen(port, () => {
 	console.log(`The system listening on port ${port}`);
 });
@@ -62,6 +68,8 @@ const socketIo = new Server(httpServer, {
 });
 
 const userSockets = new Map();
+
+// socket handler
 
 socketIo.on("connection", (socket) => { ///Handle khi có connect từ client tới
 	const count = socketIo.engine.clientsCount;

@@ -1,147 +1,172 @@
-// import { Queue } from "bull";
-// import Redis from "ioredis";
-// import { transporter } from "../../config/nodemailer";
-//
-// // Interfaces for type safety
-// // interface UserLearningProgress {
-// // 	userId: string;
-// // 	lastLessonDate: Date;
-// // 	dailyGoalStreak: number;
-// // 	emailPreferences: {
-// // 		enableReminders: boolean;
-// // 		emailAddress: string;
-// // 	};
-// // }
-//
-// class ReminderService {
-// 	// private reminderQueue;
-// 	// private redisClient;
-// 	// private emailTransporter;
-//
-// 	constructor() {
-// 		// Initialize Redis for distributed caching and queue management
-// 		this.redisClient = new Redis({
-// 			host: process.env.REDIS_HOST,
-// 			port: parseInt(process.env.REDIS_PORT || "6379"),
-// 		});
-//
-// 		// Initialize Bull queue for asynchronous reminder processing
-// 		this.reminderQueue = new Queue("user-reminders", {
-// 			redis: {
-// 				host: process.env.REDIS_HOST,
-// 				port: parseInt(process.env.REDIS_PORT || "6379"),
-// 			},
-// 		});
-//
-// 		// Set up Nodemailer transporter with SMTP configuration
-// 		this.emailTransporter = transporter;
-//
-// 		// Start processing reminder jobs
-// 		this.initializeReminderProcessing();
-// 	}
-//
-// 	// Method to schedule reminder checks
-// 	async scheduleReminderCheck(user) {
-// 		// Use distributed lock to prevent duplicate processing
-// 		const lockKey = `reminder-lock:${user.userId}`;
-// 		const lockTTL = 5 * 60; // 5 minutes
-//
-// 		try {
-// 			const lockAcquired = await this.redisClient.set(
-// 				lockKey,
-// 				"locked",
-// 				"NX",
-// 				"EX",
-// 				lockTTL,
-// 			);
-//
-// 			if (lockAcquired) {
-// 				// Add reminder check job to queue
-// 				await this.reminderQueue.add({
-// 					userId: user.userId,
-// 					emailAddress: user.emailPreferences.emailAddress,
-// 					lastLessonDate: user.lastLessonDate,
-// 				}, {
-// 					// Configure job options for retry and rate limiting
-// 					attempts: 3,
-// 					backoff: {
-// 						type: "exponential",
-// 						delay: 1000,
-// 					},
-// 					// Prevent overwhelming the system
-// 					rate: 10, // max 10 jobs per second
-// 				});
-// 			}
-// 		} catch (error) {
-// 			console.error("Error scheduling reminder:", error);
-// 		}
-// 	}
-//
-// 	// Background job processing method
-// 	initializeReminderProcessing() {
-// 		this.reminderQueue.process(async (job) => {
-// 			const { userId, emailAddress, lastLessonDate } = job.data;
-//
-// 			// Check if user hasn't learned in last 24 hours
-// 			const hoursSinceLastLesson = this.calculateHoursSinceLastLesson(lastLessonDate);
-//
-// 			if (hoursSinceLastLesson >= 24) {
-// 				await this.sendReminderEmail(emailAddress, userId);
-// 			}
-// 		});
-// 	}
-//
-// 	// Calculate hours since last lesson
-// 	private calculateHoursSinceLastLesson(lastLessonDate: Date): number {
-// 		const now = new Date();
-// 		const diffMs = now.getTime() - lastLessonDate.getTime();
-// 		return diffMs / (1000 * 60 * 60);
-// 	}
-//
-// 	// Send reminder email
-// 	private async sendReminderEmail(emailAddress: string, userId: string) {
-// 		try {
-// 			const mailOptions = {
-// 				from: process.env.EMAIL_FROM || "reminders@yourlearningapp.com",
-// 				to: emailAddress,
-// 				subject: "Keep Your Learning Streak Alive!",
-// 				html: `
-//           <h1>Don't Break Your Learning Streak!</h1>
-//           <p>Hey there! It looks like you've missed a day of learning.
-//           Jump back in and keep your progress going!</p>
-//           <a href="https://yourapp.com/continue-learning/${userId}">Continue Learning</a>
-//         `,
-// 			};
-//
-// 			// Send email
-// 			const info = await this.emailTransporter.sendMail(mailOptions);
-// 			console.log(`Reminder sent to user ${userId}. Message ID: ${info.messageId}`);
-// 		} catch (error) {
-// 			console.error("Email sending failed:", error);
-// 		}
-// 	}
-//
-// 	// Additional method to clean up old reminder jobs
-// 	async cleanupOldReminderJobs() {
-// 		const completedJobs = await this.reminderQueue.getCompleted();
-//
-// 		// Remove jobs older than 24 hours
-// 		for (const job of completedJobs) {
-// 			if (job.timestamp < Date.now() - 24 * 60 * 60 * 1000) {
-// 				await job.remove();
-// 			}
-// 		}
-// 	}
-//
-// 	// Verify email transporter connection
-// 	async verifyEmailConnection() {
-// 		try {
-// 			await this.emailTransporter.verify();
-// 			console.log("Email transporter is ready to send emails");
-// 		} catch (error) {
-// 			console.error("Email transporter verification failed:", error);
-// 		}
-// 	}
-// }
-//
-// export default ReminderService;
+const schedule = require("node-schedule");
+const Queue = require("bull");
+const { transporter: nodemailerTransporter } = require("../../config/nodemailer");
+const { pool } = require("../../connectDB"); // Job Queue
+const Redis = require("ioredis");
+
+
+class ReminderController {
+	constructor(config) {
+		this.redis = new Redis({
+			host: "localhost",
+			port: 6379,
+			maxRetriesPerRequest: 50, // Increased retry limit
+			connectTimeout: 10000,    // 10-second connection timeout
+			retryStrategy: (times) => {
+				return Math.min(times * 50, 2000);
+			},
+		});
+
+		// Email transporter setup
+		this.transporter = nodemailerTransporter;
+
+		// Job queue setup
+		this.emailQueue = new Queue("emailQueue", { redis: this.redis });
+
+		// Batch size for user processing
+		this.batchSize = config?.batchSize || 100;
+
+		// Setup email queue processor
+		this.setupQueueProcessor();
+
+		// Schedule the reminder job
+		this.scheduleReminderJob();
+	}
+
+	/**
+	 * Fetch a batch of users from the database
+	 * @param {number} offset - Start index for pagination
+	 * @param {number} limit - Number of users per batch
+	 * @returns {Promise<Array>} - Batch of users
+	 */
+	async fetchUsersBatch(offset, limit) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const currentDay = new Date().toISOString().split("T")[0];
+			const responseSql = await conn.query("CALL SP_BatchUsers(?, ?, ?)", [limit, offset, currentDay]);
+			return responseSql[0][0];
+		} catch (error) {
+			console.error(error);
+		} finally {
+			if (conn) await pool.releaseConnection(conn);
+		}
+	}
+
+	/**
+	 * Add email jobs to the queue
+	 * @param {Array} users - List of users to email
+	 */
+	addEmailJobs(users) {
+		console.log(`Adding ${users?.length} users to email queue`);
+		users.forEach((user, index) => {
+			try {
+				const job = this.emailQueue.add({ email: user?.email, currentStreak: user?.["current streak"] });
+				console.log(`Job ${index + 1}: Added email job for ${user?.email}`);
+			} catch (error) {
+				console.error(`Failed to add job for user ${user?.email}:`, error);
+			}
+		});
+	}
+
+	/**
+	 * Process email queue
+	 */
+	setupQueueProcessor() {
+		this.emailQueue.process(async (job, done) => {
+			console.log("Full job object:", JSON.stringify(job, null, 2));
+			console.log("Job data type:", typeof job.data);
+			console.log("Job data content:", job.data);
+
+			const { email, currentStreak } = job.data;
+
+			const mailOptions = {
+				from: {
+					name: "StudyTogether😊",
+					address: process.env.NODEMAILER_USER,
+				}, // sender address
+				to: email, // list of receivers
+				subject: "Keep your streak 🔥🔥", // Subject line
+				text: "Hello, guys. We are waiting you to learn new words", // plain text body
+				html: `
+						<!DOCTYPE html>
+						<html lang="en">
+						<head>
+						<meta charset="UTF-8">
+						<style>
+						body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; text-align: center; }
+						.streak-container { background-color: #f0f4f8; padding: 20px; border-radius: 10px; }
+						.streak-number { font-size: 48px; color: #4CAF50; font-weight: bold; }
+						.motivational-text { color: #333; font-size: 18px; margin: 15px 0; }
+						.action-button { 
+							display: inline-block; 
+							background-color: #4CAF50; 
+							color: white; 
+							padding: 10px 20px; 
+							text-decoration: none; 
+							border-radius: 5px; 
+							margin: 15px 0;
+							}
+						</style>
+						</head>
+						<body>
+						<div class="streak-container">
+						<h1>Don't Break Your StudyTogether Streak! 🔥</h1>
+						<div class="streak-number">${currentStreak > 1 ? currentStreak + " Days" : currentStreak + " Day"}</div>
+						<p class="motivational-text">You're on a roll! Keep learning and growing with StudyTogether.</p>
+						<a href="${process.env.CLIENT_URL}" class="action-button">Go to Website now!</a>
+						<p>Your daily commitment is making a difference!</p>
+						</div>
+						</body>
+						</html>
+                        `, // html body
+			};
+
+			try {
+				await this.transporter.sendMail(mailOptions);
+				console.log(`Reminder sent to ${email} with streak ${currentStreak}`);
+				done();
+			} catch (error) {
+				console.error(`Failed to send email to ${email} with streak ${currentStreak}:`, error);
+				done(error);
+			}
+		});
+	}
+
+	/**
+	 * Process all users in batches
+	 */
+	async processAllUsers() {
+		let offset = 1;
+		let users;
+
+		do {
+			users = await this.fetchUsersBatch(offset, this.batchSize);
+			if (users.length > 0) {
+				console.log(`Processing batch starting at offset ${offset}`);
+				this.addEmailJobs(users);
+				offset += this.batchSize;
+			}
+		} while (users.length > 0);
+
+		console.log("All users have been queued for reminders.");
+	}
+
+	/**
+	 * Schedule the reminder job
+	 * cron expression 0 12 * * *
+	 * 					minute (0)
+	 * 					hour (12) = 12 am
+	 * 					day of month (*)
+	 * 					month (*)
+	 * 					year (*)
+	 */
+	scheduleReminderJob() {
+		schedule.scheduleJob("0 12 * * *", async () => {
+			console.log("Starting daily reminder job...");
+			await this.processAllUsers();
+		});
+	}
+}
+
+module.exports = { ReminderController };
