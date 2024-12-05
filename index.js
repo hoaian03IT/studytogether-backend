@@ -60,6 +60,7 @@ app.listen(port, () => {
 });
 
 
+// socket handler
 const httpServer = createServer(app);
 const socketIo = new Server(httpServer, {
 	cors: {
@@ -68,8 +69,6 @@ const socketIo = new Server(httpServer, {
 });
 
 const userSockets = new Map();
-
-// socket handler
 
 socketIo.on("connection", (socket) => { ///Handle khi có connect từ client tới
 	const count = socketIo.engine.clientsCount;

@@ -67,6 +67,10 @@ class LearnProcessController {
 			}
 
 			await conn.query("CALL SP_UpdateUserPoint(?,?,?)", [userId, courseId, points]);
+			// cap nhat streak
+			const currentDay = new Date().toISOString().split("T")[0];
+			await conn.query("CALL SP_UpdateStreak(?,?)", [userId, currentDay]);
+
 			res.status(200).json({ messageCode: "UPDATE_SUCCESS" });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
@@ -128,6 +132,8 @@ class LearnProcessController {
 			}));
 
 			await conn.query("CALL SP_UpdateUserPoint(?,?,?)", [userId, courseId, points]);
+			const currentDay = new Date().toISOString().split("T")[0];
+			await conn.query("CALL SP_UpdateStreak(?,?)", [userId, currentDay]);
 
 			res.status(200).json({ messageCode: "UPDATE_SUCCESS" });
 		} catch (error) {

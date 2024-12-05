@@ -20,7 +20,26 @@ class NotificationController {
 			console.error(error);
 			return null;
 		} finally {
-			pool.releaseConnection(conn);
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
+
+	static async createNotificationStreak(userId, currentStreak) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			let responseSql2 = await conn.query("CALL SP_CreateNotification(?, ?, 'system', ?, ?)",
+				[userId, currentStreak > 0 ? "KEEP_STREAK" : "MISSING", currentStreak > 0 ? `${currentStreak} ${currentStreak > 1 ? "days" : "day"}` : "", ""]);
+
+			return {
+				notificationId: responseSql2[0][0][0]?.["notification id"],
+				ownerUsername: userId,
+			};
+		} catch (error) {
+			console.error(error);
+			return null;
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
 
