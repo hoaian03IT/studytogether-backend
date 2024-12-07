@@ -1,38 +1,9 @@
 const { pool } = require("../../connectDB");
 const { uploadImage, uploadAudio } = require("../../utils/uploadToCloud");
 const { CommonHelpers } = require("../helpers/commons");
+const { validation } = require("../../utils/inputValidations");
 
 class ExerciseController {
-	async getExerciseByCourse(req, res) {
-		let conn;
-		try {
-			conn = await pool.getConnection();
-			const { "user id": userId } = req.user;
-			const { "course-id": courseId } = req.query;
-
-
-			if (!courseId) {
-				return res.status(401).json({ errorCode: "MISS_PARAMETER" });
-			}
-
-			conn.query("CALL SP_GetExerciseByCourse(?,?)", [courseId, userId])
-				.then(response => {
-					res.status(200).json({ exercises: response[0][0] });
-				})
-				.catch(error => {
-					if (error.sqlState == 45000) {
-						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
-					} else {
-						res.status(500).json({ error: error.message });
-					}
-				});
-		} catch (error) {
-			CommonHelpers.handleError(error, res);
-		} finally {
-			await CommonHelpers.safeRelease(pool, conn);
-		}
-	}
-
 	async getExerciseByLevel(req, res) {
 		let conn;
 		try {
@@ -40,22 +11,17 @@ class ExerciseController {
 			const { "user id": userId } = req.user;
 			const { "course-id": courseId, "level-id": levelId } = req.query;
 
-
-			if (!courseId || !levelId) {
+			if (!courseId) {
 				return res.status(401).json({ errorCode: "MISS_PARAMETER" });
 			}
 
-			conn.query("CALL SP_GetExerciseByLevels(?,?,?)", [courseId, userId, levelId])
-				.then(response => {
-					res.status(200).json({ exercises: response[0][0] });
-				})
-				.catch(error => {
-					if (error.sqlState == 45000) {
-						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
-					} else {
-						res.status(500).json({ error: error.message });
-					}
-				});
+			if (levelId) {
+				let response = await conn.query("CALL SP_GetExerciseByLevels(?,?,?)", [courseId, userId, levelId]);
+				res.status(200).json({ exercises: response[0][0] });
+			} else {
+				let response = await conn.query("CALL SP_GetExerciseByCourse(?,?)", [courseId, userId]);
+				res.status(200).json({ exercises: response[0][0] });
+			}
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {
@@ -71,35 +37,26 @@ class ExerciseController {
 			let {
 				courseId,
 				levelId,
-				exerciseTypeId,
+				exerciseType,
 				difficultyLevel = 1,
 				questionText,
 				answerText,
 				image = null,
 				audio = null,
 				splitChar = "\\n",
+				explanation,
+				options,
+				title,
 			} = req.body;
 
-			if (image) {
-				image = await uploadImage(image, []);
+			if (image && !validation.url(image)) {
+				image = await uploadImage(image, [title]);
 			}
+			if (audio && !validation.url(audio))
+				audio = await uploadAudio(audio, [title]);
 
-			if (audio)
-				image = await uploadAudio(audio, []);
-
-			conn.query("CALL SP_InsertNewExample(?,?,?,?,?,?,?,?,?,?)", [courseId, userId, levelId, exerciseTypeId, difficultyLevel, questionText, answerText, image, audio, splitChar])
-				.then(response => {
-					res.status(200).json({ newExercise: response[0][0][0] });
-				})
-				.catch(error => {
-					if (error.sqlState == 45000) {
-						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
-					} else if (error.sqlState == 45001) {
-						res.status(404).json({ errorCode: "EXERCISE_TYPE_NOT_FOUND" });
-					} else {
-						res.status(500).json({ error: error.message });
-					}
-				});
+			let response = await conn.query("CALL SP_InsertNewExercise(?,?,?,?,?,?,?,?,?,?,?,?,?)", [courseId, userId, levelId, title, exerciseType, difficultyLevel, questionText, options, answerText, image, audio, splitChar, explanation]);
+			res.status(200).json({ newExercise: response[0][0][0] });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {
@@ -116,34 +73,33 @@ class ExerciseController {
 				courseId,
 				levelId,
 				exerciseId,
-				exerciseTypeId,
-				difficultyLevel = 1,
+				difficultyLevel,
 				questionText,
 				answerText,
-				image = null,
-				audio = null,
-				splitChar = "\\n",
+				image,
+				audio,
+				splitChar,
+				explanation,
+				options,
+				title,
 			} = req.body;
 
-			if (image) {
-				image = await uploadImage(image, []);
-			}
-			if (audio)
-				image = await uploadAudio(audio, []);
+			console.log({
+				explanation,
+			});
 
-			conn.query("CALL SP_UpdateExercise(?,?,?,?,?,?,?,?,?,?,?)", [courseId, userId, levelId, exerciseId, exerciseTypeId, difficultyLevel, questionText, answerText, image, audio, splitChar])
-				.then(response => {
-					res.status(200).json({ updatedExercise: response[0][0][0] });
-				})
-				.catch(error => {
-					if (error.sqlState == 45000) {
-						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
-					} else if (error.sqlState == 45001) {
-						res.status(404).json({ errorCode: "EXERCISE_TYPE_NOT_FOUND" });
-					} else {
-						res.status(500).json({ error: error.message });
-					}
-				});
+			if (image && !validation.url(image)) {
+				image = await uploadImage(image, [title]);
+			}
+			if (audio && !validation.url(audio))
+				audio = await uploadAudio(audio, [title]);
+
+			console.log({ image, audio });
+
+			let response = await conn.query("CALL SP_UpdateExercise(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+				[userId, courseId, levelId, exerciseId, difficultyLevel, questionText, answerText, image, audio, splitChar, explanation, options, title]);
+
+			res.status(200).json({ updatedExercise: response[0][0][0] });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {
@@ -162,19 +118,8 @@ class ExerciseController {
 				"exercise-id": exerciseId,
 			} = req.query;
 
-			conn.query("CALL SP_DisableExercise(?,?,?,?)", [courseId, userId, levelId, exerciseId])
-				.then(() => {
-					res.status(200).json({ messageCode: "DELETE_EXERCISE_SUCCESS" });
-				})
-				.catch(error => {
-					if (error.sqlState == 45000) {
-						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
-					} else if (error.sqlState == 45001) {
-						res.status(404).json({ errorCode: "EXERCISE_TYPE_NOT_FOUND" });
-					} else {
-						res.status(500).json({ error: error.message });
-					}
-				});
+			await conn.query("CALL SP_DisableExercise(?,?,?,?)", [courseId, userId, levelId, exerciseId]);
+			res.status(200).json({ messageCode: "DELETE_EXERCISE_SUCCESS" });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {

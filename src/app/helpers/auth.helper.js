@@ -21,13 +21,11 @@ class AuthHelper {
 		expiredAt.setMilliseconds(expiredAt.getMilliseconds() + maxAge);
 
 		// save refresh token to database
-		conn.query("INSERT INTO `refresh tokens` (`user id`, token, `expired at`) VALUE (?, ?, ?);", [
+		await conn.query("INSERT INTO `refresh tokens` (`user id`, token, `expired at`) VALUE (?, ?, ?);", [
 			userInfo["user id"],
 			refreshToken,
 			expiredAt,
-		]).catch((err) => {
-			throw new Error(err);
-		});
+		]);
 		return { refreshToken, accessToken, maxAge };
 	}
 

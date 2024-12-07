@@ -21,11 +21,11 @@ class Auth {
 			const { usernameOrEmail, password } = req.body;
 
 			if (!validation.email(usernameOrEmail) && !validation.username(usernameOrEmail)) {
-				return res.status(401).json({ messageCode: "INVALID_ACCOUNT" });
+				return res.status(401).json({ errorCode: "INVALID_ACCOUNT" });
 			}
 
 			if (!validation.password(password)) {
-				return res.status(401).json({ messageCode: "INVALID_PASSWORD" });
+				return res.status(401).json({ errorCode: "INVALID_PASSWORD" });
 			}
 
 			conn.query("CALL SP_GetUserAccount(?)", [usernameOrEmail])
@@ -33,7 +33,7 @@ class Auth {
 					const userInfo = result[0][0];
 					const isMatchP = await bcrypt.compare(password, userInfo["hashpassword"]);
 					if (!isMatchP) {
-						res.status(401).json({ messageCode: "INCORRECT_ACCOUNT/PASSWORD" });
+						res.status(401).json({ errorCode: "INCORRECT_ACCOUNT/PASSWORD" });
 						return;
 					}
 
@@ -69,11 +69,11 @@ class Auth {
 			const { email, password, role } = req.body;
 
 			if (!validation.email(email)) {
-				return res.status(401).json({ message: "INVALID_ACCOUNT" });
+				return res.status(401).json({ errorCode: "INVALID_ACCOUNT" });
 			}
 
 			if (!validation.password(password)) {
-				return res.status(401).json({ message: "INVALID_PASSWORD" });
+				return res.status(401).json({ errorCode: "INVALID_PASSWORD" });
 			}
 
 			let username = email.split("@")[0];
@@ -170,35 +170,47 @@ class Auth {
 				}
 
 				conn.query("SELECT 1 FROM `refresh tokens` WHERE `user id`=? AND token=?", [userInfo["user id"], refreshToken])
-					.then(response => {
+					.then(async response => {
 						if (response[0].length === 0) {
 							return res.status(401).json({ errorCode: "UNAUTHORIZED" });
 						}
 
-						// xoá token hiện tại
-						conn.query("DELETE FROM `refresh tokens` WHERE `user id`=? AND token=?", [userInfo["user id"], refreshToken])
-							.then(async () => {
-								const {
-									accessToken,
-									refreshToken: newRefreshToken,
-									maxAge,
-								} = await AuthHelper.generateTokens(userInfo, conn);
+						const {
+							accessToken,
+							refreshToken: newRefreshToken,
+							maxAge,
+						} = await AuthHelper.generateTokens(userInfo, conn);
 
-								res.cookie("refresh_token", newRefreshToken, {
-									maxAge: maxAge,
-									httpOnly: true,
-									secure: true,
-								})
-									.status(200)
-									.json({ messageCode: "REFRESH_TOKEN", token: accessToken });
-							})
-							.catch((err) => {
-								CommonHelpers.handleError(err, res);
-							});
+						res.cookie("refresh_token", newRefreshToken, {
+							maxAge: maxAge,
+							httpOnly: true,
+							secure: true,
+						})
+							.status(200)
+							.json({ messageCode: "REFRESH_TOKEN", token: accessToken });
+
+						// // xoá token hiện tại
+						// conn.query("DELETE FROM `refresh tokens` WHERE `user id`=? AND token=?", [userInfo["user id"], refreshToken])
+						// 	.then(async () => {
+						// 		const {
+						// 			accessToken,
+						// 			refreshToken: newRefreshToken,
+						// 			maxAge,
+						// 		} = await AuthHelper.generateTokens(userInfo, conn);
+						//
+						// 		res.cookie("refresh_token", newRefreshToken, {
+						// 			maxAge: maxAge,
+						// 			httpOnly: true,
+						// 			secure: true,
+						// 		})
+						// 			.status(200)
+						// 			.json({ messageCode: "REFRESH_TOKEN", token: accessToken });
+						// 	})
+						// 	.catch((err) => {
+						// 		CommonHelpers.handleError(err, res);
+						// 	});
 
 					});
-
-
 			});
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
@@ -215,7 +227,7 @@ class Auth {
 			email = email.trim();
 
 			if (!validation.email(email)) {
-				return res.status(401).json({ messageCode: "INVALID_EMAIL" });
+				return res.status(401).json({ errorCode: "INVALID_EMAIL" });
 			}
 
 			const newPassword = generatePassword();
@@ -329,7 +341,7 @@ class Auth {
 				.catch(async (err) => {
 					if (err.sqlState != 45000) return res.status(401).json({ message: err.message });
 					// trường hợp procedure báo lỗi không có tài khoản thì tạo
-					if (!role) return res.status(401).json({ message: "You must register first" });
+					if (!role) return res.status(401).json({ errorCode: "REGISTER_FIRST" });
 
 					let username = email.split("@")[0];
 
@@ -371,7 +383,7 @@ class Auth {
 								secure: true,
 							})
 								.status(200)
-								.json({ ...rest, message: "register" });
+								.json({ ...rest, messageCode: "REGISTER_SUCCESS" });
 						})
 						.catch((err) => {
 							CommonHelpers.handleError(err, res);
@@ -414,12 +426,12 @@ class Auth {
 						secure: true,
 					})
 						.status(200)
-						.json({ ...rest, message: "login" });
+						.json({ ...rest, messageCode: "LOGIN_SUCCESS" });
 				})
 				.catch(async (err) => {
 					if (err.sqlState != 45000) return res.status(401).json({ message: err.message });
 					// trường hợp procedure báo lỗi không có tài khoản thì tạo
-					if (!role) return res.status(401).json({ message: "You must register first" });
+					if (!role) return res.status(401).json({ errorCode: "REGISTER_FIRST" });
 
 					let username = email.split("@")[0];
 
@@ -461,7 +473,7 @@ class Auth {
 								secure: true,
 							})
 								.status(200)
-								.json({ ...rest, message: "register" });
+								.json({ ...rest, messageCode: "REGISTER_SUCCESS" });
 						})
 						.catch((err) => {
 							CommonHelpers.handleError(err, res);

@@ -14,16 +14,8 @@ class LevelControllerClass {
 				return res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 			}
 
-			conn.query("CALL SP_GetCourseLevels(?,?)", [courseId, userId])
-				.then((response) => {
-					res.status(200).json({ levels: response[0][0] });
-				})
-				.catch((error) => {
-					if (error.sqlState == 45000) {
-						// COURSE_NOT_FOUND: không tìm thấy khoá phù hợp hoặc không sở hữu khoá này
-						res.status(404).json({ error: error.message });
-					}
-				});
+			let response = await conn.query("CALL SP_GetCourseLevels(?,?)", [courseId, userId]);
+			res.status(200).json({ levels: response[0][0] });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {
@@ -43,16 +35,8 @@ class LevelControllerClass {
 				return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 			}
 
-			conn.query("CALL SP_InsertNewCourseLevel(?,?,?)", [courseId, userId, levelName])
-				.then((response) => {
-					res.status(200).json({ newLevel: response[0][0][0] });
-				})
-				.catch((error) => {
-					if (error.sqlState == 45000) {
-						// COURSE_NOT_FOUND: không tìm thấy khoá phù hợp hoặc không sở hữu khoá này
-						res.status(404).json({ error: error.message });
-					}
-				});
+			let response = await conn.query("CALL SP_InsertNewCourseLevel(?,?,?)", [courseId, userId, levelName]);
+			res.status(200).json({ newLevel: response[0][0][0] });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {
@@ -72,21 +56,8 @@ class LevelControllerClass {
 				return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 			}
 
-			conn.query("CALL SP_UpdateCourseLevel(?,?,?,?)", [courseId, userId, levelId, levelName])
-				.then((response) => {
-					res.status(200).json({ updatedLevel: response[0][0][0] });
-				})
-				.catch((error) => {
-					if (error.sqlState == 45000) {
-						// COURSE_NOT_FOUND: không tìm thấy khoá phù hợp hoặc không sở hữu khoá này
-						res.status(404).json({ error: error.message });
-					} else if (error.sqlState == 45001) {
-						// WAS_DELETED: Đã bị disabled
-						res.status(404).json({ error: error.message });
-					} else {
-						res.status(500).json({ error: error.message });
-					}
-				});
+			let response = await conn.query("CALL SP_UpdateCourseLevel(?,?,?,?)", [courseId, userId, levelId, levelName]);
+			res.status(200).json({ updatedLevel: response[0][0][0] });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {
@@ -100,24 +71,14 @@ class LevelControllerClass {
 			conn = await pool.getConnection();
 			const { "user id": userId } = req.user;
 			const { "course-id": courseId, "level-id": levelId } = req.query;
-
-			console.log(req.body);
-
+			
 			if (!courseId || !levelId) {
 				// MISS_PARAMETER: Thiếu tham số
 				return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 			}
 
-			conn.query("CALL SP_DisableCourseLevel(?,?,?)", [courseId, userId, levelId])
-				.then((response) => {
-					res.status(200).json({ message: "Delete successfully" });
-				})
-				.catch((error) => {
-					if (error.sqlState == 45000) {
-						// COURSE_NOT_FOUND: không tìm thấy khoá phù hợp hoặc không sở hữu khoá này
-						res.status(404).json({ error: error.message });
-					}
-				});
+			await conn.query("CALL SP_DisableCourseLevel(?,?,?)", [courseId, userId, levelId]);
+			res.status(200).json({ messageCode: "DELETE_COURSE_SUCCESS" });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {

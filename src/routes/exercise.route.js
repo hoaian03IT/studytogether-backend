@@ -9,7 +9,6 @@ const timeLog = (req, res, next) => {
 };
 router.use(timeLog);
 
-router.get("/all", [authenticate], ExerciseController.getExerciseByCourse);
 router.get("/", [authenticate], ExerciseController.getExerciseByLevel);
 router.post("/new", [authenticate], ExerciseController.addNewExercise);
 router.post("/edit", [authenticate], ExerciseController.updateExercise);
