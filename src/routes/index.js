@@ -29,7 +29,7 @@ function route(app) {
 	app.use("/enrollment", enrollmentRoute);
 	app.use("/learn", learnProcessRoute);
 	app.use("/notification", notificationRoute);
-	app.use("/gpt", GPTRoute);
+	// app.use("/gpt", GPTRoute);
 }
 
 module.exports = route;
