@@ -37,11 +37,7 @@ class Auth {
 						return;
 					}
 
-					const {
-						accessToken,
-						refreshToken,
-						maxAge,
-					} = await AuthHelper.generateTokens(userInfo, conn);
+					const { accessToken, refreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
 
 					const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
 
@@ -81,10 +77,7 @@ class Auth {
 
 			conn = await pool.getConnection();
 
-			let [records] = await conn.query(
-				"SELECT `user id` FROM users WHERE username=? ORDER BY `user id` LIMIT 1",
-				[username],
-			);
+			let [records] = await conn.query("SELECT `user id` FROM users WHERE username=? ORDER BY `user id` LIMIT 1", [username]);
 
 			if (records.length > 0) {
 				username = AuthHelper.generateUsername(email);
@@ -93,25 +86,11 @@ class Auth {
 			// posix: chuyển thành dấu "/" thay vì "\"
 			const imagePath = `${process.env.SERVER_URL}/static/default-avatar/default-avatar-0.jpg`;
 
-			conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?,?)", [
-				email,
-				hashedPassword,
-				username,
-				imagePath,
-				role,
-				null,
-				null,
-				null,
-				null,
-			])
+			conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?,?)", [email, hashedPassword, username, imagePath, role, null, null, null, null])
 				.then(async ([response]) => {
 					const userInfo = response[0][0];
 
-					const {
-						accessToken,
-						refreshToken,
-						maxAge,
-					} = await AuthHelper.generateTokens(userInfo, conn);
+					const { accessToken, refreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
 
 					const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
 
@@ -165,52 +144,45 @@ class Auth {
 
 			jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err, userInfo) => {
 				if (err) {
-					CommonHelpers.handleError(err, res);
+					console.error(err);
 					return;
 				}
 
-				conn.query("SELECT 1 FROM `refresh tokens` WHERE `user id`=? AND token=?", [userInfo["user id"], refreshToken])
-					.then(async response => {
-						if (response[0].length === 0) {
-							return res.status(401).json({ errorCode: "UNAUTHORIZED" });
-						}
+				const response = await conn.query("SELECT 1 FROM `refresh tokens` WHERE `user id`=? AND token=?", [userInfo["user id"], refreshToken]);
+				if (response[0].length === 0) {
+					return res.status(401).json({ errorCode: "UNAUTHORIZED" });
+				}
 
-						const {
-							accessToken,
-							refreshToken: newRefreshToken,
-							maxAge,
-						} = await AuthHelper.generateTokens(userInfo, conn);
+				const { accessToken, refreshToken: newRefreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
 
-						res.cookie("refresh_token", newRefreshToken, {
-							maxAge: maxAge,
-							httpOnly: true,
-							secure: true,
-						})
-							.status(200)
-							.json({ messageCode: "REFRESH_TOKEN", token: accessToken });
+				res.cookie("refresh_token", newRefreshToken, {
+					maxAge: maxAge,
+					httpOnly: true,
+					secure: true,
+				})
+					.status(200)
+					.json({ messageCode: "REFRESH_TOKEN", token: accessToken });
 
-						// // xoá token hiện tại
-						// conn.query("DELETE FROM `refresh tokens` WHERE `user id`=? AND token=?", [userInfo["user id"], refreshToken])
-						// 	.then(async () => {
-						// 		const {
-						// 			accessToken,
-						// 			refreshToken: newRefreshToken,
-						// 			maxAge,
-						// 		} = await AuthHelper.generateTokens(userInfo, conn);
-						//
-						// 		res.cookie("refresh_token", newRefreshToken, {
-						// 			maxAge: maxAge,
-						// 			httpOnly: true,
-						// 			secure: true,
-						// 		})
-						// 			.status(200)
-						// 			.json({ messageCode: "REFRESH_TOKEN", token: accessToken });
-						// 	})
-						// 	.catch((err) => {
-						// 		CommonHelpers.handleError(err, res);
-						// 	});
-
-					});
+				// // xoá token hiện tại
+				// conn.query("DELETE FROM `refresh tokens` WHERE `user id`=? AND token=?", [userInfo["user id"], refreshToken])
+				// 	.then(async () => {
+				// 		const {
+				// 			accessToken,
+				// 			refreshToken: newRefreshToken,
+				// 			maxAge,
+				// 		} = await AuthHelper.generateTokens(userInfo, conn);
+				//
+				// 		res.cookie("refresh_token", newRefreshToken, {
+				// 			maxAge: maxAge,
+				// 			httpOnly: true,
+				// 			secure: true,
+				// 		})
+				// 			.status(200)
+				// 			.json({ messageCode: "REFRESH_TOKEN", token: accessToken });
+				// 	})
+				// 	.catch((err) => {
+				// 		CommonHelpers.handleError(err, res);
+				// 	});
 			});
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
@@ -322,11 +294,7 @@ class Auth {
 			conn.query("CALL SP_GetUserAccountByGoogleId(?,?)", [email, sub])
 				.then(async ([response]) => {
 					const userInfo = response[0][0];
-					const {
-						accessToken,
-						refreshToken,
-						maxAge,
-					} = await AuthHelper.generateTokens(userInfo, conn);
+					const { accessToken, refreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
 
 					const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
 
@@ -345,10 +313,7 @@ class Auth {
 
 					let username = email.split("@")[0];
 
-					let [records] = await conn.query(
-						"SELECT 1 FROM users WHERE username=? ORDER BY `user id` LIMIT 1",
-						[username],
-					);
+					let [records] = await conn.query("SELECT 1 FROM users WHERE username=? ORDER BY `user id` LIMIT 1", [username]);
 
 					if (records.length > 0) {
 						username = AuthHelper.generateUsername(email);
@@ -369,11 +334,7 @@ class Auth {
 						.then(async ([response]) => {
 							const userInfo = response[0][0];
 
-							const {
-								accessToken,
-								refreshToken,
-								maxAge,
-							} = await AuthHelper.generateTokens(userInfo, conn);
+							const { accessToken, refreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
 
 							const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
 
@@ -412,11 +373,7 @@ class Auth {
 			conn.query("CALL SP_GetUserAccountByFacebookId(?,?)", [email, idFB])
 				.then(async ([response]) => {
 					const userInfo = response[0][0];
-					const {
-						accessToken,
-						refreshToken,
-						maxAge,
-					} = await AuthHelper.generateTokens(userInfo, conn);
+					const { accessToken, refreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
 
 					const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
 
@@ -435,10 +392,7 @@ class Auth {
 
 					let username = email.split("@")[0];
 
-					let [records] = await conn.query(
-						"SELECT 1 FROM users WHERE username=? ORDER BY `user id` LIMIT 1",
-						[username],
-					);
+					let [records] = await conn.query("SELECT 1 FROM users WHERE username=? ORDER BY `user id` LIMIT 1", [username]);
 
 					if (records.length > 0) {
 						username = AuthHelper.generateUsername(email);
@@ -459,11 +413,7 @@ class Auth {
 						.then(async ([response]) => {
 							const userInfo = response[0][0];
 
-							const {
-								accessToken,
-								refreshToken,
-								maxAge,
-							} = await AuthHelper.generateTokens(userInfo, conn);
+							const { accessToken, refreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
 
 							const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
 

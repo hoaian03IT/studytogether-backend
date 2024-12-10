@@ -8,13 +8,15 @@ class NotificationController {
 			conn = await pool.getConnection();
 			let responseSql = await conn.query("CALL SP_GetRelatedEnrollmentInfo(?)", [enrollmentId]);
 
-
-			let responseSql2 = await conn.query("CALL SP_CreateNotification(?, ?, 'course-registration', ?, ?)",
-				[responseSql[0][0][0]?.["owner course user id"], "COURSE_REGISTRATION", responseSql[0][0][0]?.name, responseSql[0][0][0]?.["enrollment username"]]);
-
+			let responseSql2 = await conn.query("CALL SP_CreateNotification(?, ?, 'course', ?, ?)", [
+				responseSql[0][0][0]?.["owner course user id"],
+				"COURSE_REGISTRATION",
+				responseSql[0][0][0]?.["course name"],
+				responseSql[0][0][0]?.["enrollment username"],
+			]);
 			return {
-				notificationId: responseSql2[0][0][0]?.["notification id"],
-				ownerUsername: responseSql[0][0][0]?.["owner course username"],
+				notificationId: responseSql2[0][0][0]?.["notification_id"],
+				ownerUsername: responseSql2[0][0][0]?.["owner course username"],
 			};
 		} catch (error) {
 			console.error(error);
@@ -28,11 +30,15 @@ class NotificationController {
 		let conn;
 		try {
 			conn = await pool.getConnection();
-			let responseSql2 = await conn.query("CALL SP_CreateNotification(?, ?, 'system', ?, ?)",
-				[userId, currentStreak > 0 ? "KEEP_STREAK" : "MISSING", currentStreak > 0 ? `${currentStreak} ${currentStreak > 1 ? "days" : "day"}` : "", ""]);
+			let responseSql2 = await conn.query("CALL SP_CreateNotification(?, ?, 'system', ?, ?)", [
+				userId,
+				currentStreak > 0 ? "KEEP_STREAK" : "MISSING",
+				currentStreak > 0 ? `${currentStreak} ${currentStreak > 1 ? "days" : "day"}` : "",
+				"",
+			]);
 
 			return {
-				notificationId: responseSql2[0][0][0]?.["notification id"],
+				notificationId: responseSql2[0][0][0]?.["notification_id"],
 				ownerUsername: userId,
 			};
 		} catch (error) {

@@ -52,10 +52,23 @@ class ExerciseController {
 			if (image && !validation.url(image)) {
 				image = await uploadImage(image, [title]);
 			}
-			if (audio && !validation.url(audio))
-				audio = await uploadAudio(audio, [title]);
+			if (audio && !validation.url(audio)) audio = await uploadAudio(audio, [title]);
 
-			let response = await conn.query("CALL SP_InsertNewExercise(?,?,?,?,?,?,?,?,?,?,?,?,?)", [courseId, userId, levelId, title, exerciseType, difficultyLevel, questionText, options, answerText, image, audio, splitChar, explanation]);
+			let response = await conn.query("CALL SP_InsertNewExercise(?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+				courseId,
+				userId,
+				levelId,
+				title,
+				exerciseType,
+				difficultyLevel,
+				questionText,
+				options,
+				answerText,
+				image,
+				audio,
+				splitChar,
+				explanation,
+			]);
 			res.status(200).json({ newExercise: response[0][0][0] });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
@@ -69,7 +82,21 @@ class ExerciseController {
 		try {
 			conn = await pool.getConnection();
 			const { "user id": userId } = req.user;
-			let {
+			let { courseId, levelId, exerciseId, difficultyLevel, questionText, answerText, image, audio, splitChar, explanation, options, title } = req.body;
+
+			console.log({
+				explanation,
+			});
+
+			if (image && !validation.url(image)) {
+				image = await uploadImage(image, [title]);
+			}
+			if (audio && !validation.url(audio)) audio = await uploadAudio(audio, [title]);
+
+			console.log({ image, audio });
+
+			let response = await conn.query("CALL SP_UpdateExercise(?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+				userId,
 				courseId,
 				levelId,
 				exerciseId,
@@ -82,22 +109,7 @@ class ExerciseController {
 				explanation,
 				options,
 				title,
-			} = req.body;
-
-			console.log({
-				explanation,
-			});
-
-			if (image && !validation.url(image)) {
-				image = await uploadImage(image, [title]);
-			}
-			if (audio && !validation.url(audio))
-				audio = await uploadAudio(audio, [title]);
-
-			console.log({ image, audio });
-
-			let response = await conn.query("CALL SP_UpdateExercise(?,?,?,?,?,?,?,?,?,?,?,?,?)",
-				[userId, courseId, levelId, exerciseId, difficultyLevel, questionText, answerText, image, audio, splitChar, explanation, options, title]);
+			]);
 
 			res.status(200).json({ updatedExercise: response[0][0][0] });
 		} catch (error) {
@@ -112,11 +124,7 @@ class ExerciseController {
 		try {
 			conn = await pool.getConnection();
 			const { "user id": userId } = req.user;
-			let {
-				"course-id": courseId,
-				"level-id": levelId,
-				"exercise-id": exerciseId,
-			} = req.query;
+			let { "course-id": courseId, "level-id": levelId, "exercise-id": exerciseId } = req.query;
 
 			await conn.query("CALL SP_DisableExercise(?,?,?,?)", [courseId, userId, levelId, exerciseId]);
 			res.status(200).json({ messageCode: "DELETE_EXERCISE_SUCCESS" });

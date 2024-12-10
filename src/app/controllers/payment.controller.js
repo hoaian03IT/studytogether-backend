@@ -95,7 +95,7 @@ class PaymentController {
 							messageCode: "PAYMENT_SUCCESS",
 						});
 					}) //Send minimal data to client
-					.catch(error => {
+					.catch((error) => {
 						CommonHelpers.handleError(error, res);
 					});
 			}
@@ -122,6 +122,7 @@ class PaymentController {
 			let { handledPrice: USDPrice } = await getCoursePrices(conn, courseId);
 			// convert USD to VND real-time
 			let { data } = await axios.get(process.env.EXCHANGE_RATE_API);
+
 			let VNDPerDollar = data?.["conversion_rates"]?.["VND"];
 			let handledVNDPrice = VNDPerDollar * USDPrice;
 			// ===========

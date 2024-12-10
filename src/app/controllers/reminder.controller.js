@@ -6,14 +6,13 @@ const Redis = require("ioredis");
 const { NotificationController } = require("./notification.controller");
 const { CommonHelpers } = require("../helpers/commons");
 
-
 class ReminderController {
 	constructor(config) {
 		this.redis = new Redis({
 			host: "localhost",
 			port: 6379,
 			maxRetriesPerRequest: 50, // Increased retry limit
-			connectTimeout: 10000,    // 10-second connection timeout
+			connectTimeout: 10000, // 10-second connection timeout
 			retryStrategy: (times) => {
 				return Math.min(times * 50, 2000);
 			},
@@ -45,8 +44,15 @@ class ReminderController {
 		let conn;
 		try {
 			conn = await pool.getConnection();
-			const currentDay = new Date().toISOString().split("T")[0];
-			const responseSql = await conn.query("CALL SP_BatchUsers(?, ?, ?)", [limit, offset, currentDay]);
+			const currentDay = new Date();
+			const responseSql = await conn.query("CALL SP_BatchUsers(?, ?, ?)", [
+				limit,
+				offset,
+				`${currentDay.getFullYear()}-${currentDay.getMonth() + 1}-${currentDay.getDate()}`,
+			]);
+
+			console.log(limit, offset, `${currentDay.getFullYear()}-${currentDay.getMonth() + 1}-${currentDay.getDate()}`);
+
 			return responseSql[0][0];
 		} catch (error) {
 			console.error(error);
@@ -87,15 +93,16 @@ class ReminderController {
 
 			const { email, currentStreak, userId, callReturn } = job.data;
 
-			const mailOptions = callReturn ? {
-				from: {
-					name: "StudyTogether😊",
-					address: process.env.NODEMAILER_USER,
-				}, // sender address
-				to: email, // list of receivers
-				subject: "We've missed you on StudyTogether!🥹🥹", // Subject line
-				text: "We've been missing your participation in our learning community. Your goals are waiting for you - let's get back on track!", // plain text body
-				html: `
+			const mailOptions = callReturn
+				? {
+						from: {
+							name: "StudyTogether😊",
+							address: process.env.NODEMAILER_USER,
+						}, // sender address
+						to: email, // list of receivers
+						subject: "We've missed you on StudyTogether!🥹🥹", // Subject line
+						text: "We've been missing your participation in our learning community. Your goals are waiting for you - let's get back on track!", // plain text body
+						html: `
 						<!DOCTYPE html>
 						<html lang="en">
 						<head>
@@ -127,15 +134,16 @@ class ReminderController {
 						</body>
 						</html>
                         `, // html body
-			} : {
-				from: {
-					name: "StudyTogether😊",
-					address: process.env.NODEMAILER_USER,
-				}, // sender address
-				to: email, // list of receivers
-				subject: "Keep your streak 🔥🔥", // Subject line
-				text: "Hello, my friend. We are waiting you for you to learn new words", // plain text body
-				html: `
+				  }
+				: {
+						from: {
+							name: "StudyTogether😊",
+							address: process.env.NODEMAILER_USER,
+						}, // sender address
+						to: email, // list of receivers
+						subject: "Keep your streak 🔥🔥", // Subject line
+						text: "Hello, my friend. We are waiting you for you to learn new words", // plain text body
+						html: `
 						<!DOCTYPE html>
 						<html lang="en">
 						<head>
@@ -167,7 +175,7 @@ class ReminderController {
 						</body>
 						</html>
                         `, // html body
-			};
+				  };
 
 			try {
 				await this.transporter.sendMail(mailOptions);
@@ -185,7 +193,7 @@ class ReminderController {
 	 * Process all users in batches
 	 */
 	async processAllUsers() {
-		let offset = 1;
+		let offset = 0;
 		let users;
 
 		do {
@@ -210,7 +218,7 @@ class ReminderController {
 	 * 					year (*)
 	 */
 	scheduleReminderJob() {
-		schedule.scheduleJob("0 12 * * *", async () => {
+		schedule.scheduleJob("42 2 * * *", async () => {
 			console.log("Starting daily reminder job...");
 			await this.processAllUsers();
 		});
@@ -219,9 +227,8 @@ class ReminderController {
 			let conn;
 			try {
 				conn = await pool.getConnection();
-				const currentDay = new Date().toISOString().split("T")[0];
-				console.log("runasdasd");
-				// await conn.query("CALL SP_ResetStreak(?)", [currentDay]);
+				const currentDay = new Date();
+				await conn.query("CALL SP_ResetStreak(?)", [`${currentDay.getFullYear()}-${currentDay.getMonth() + 1}-${currentDay.getDate()}`]);
 			} catch (error) {
 				console.error(error);
 			} finally {

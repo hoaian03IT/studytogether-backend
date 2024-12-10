@@ -11,15 +11,16 @@ class VocabularyControllerClass {
 			const { courseId } = req.params;
 			if (!courseId) return res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 			conn.query("CALL SP_GetAllWords(?, ?)", [courseId, userId])
-				.then(response => {
+				.then((response) => {
 					res.status(200).json({ vocabularyList: response[0][0] });
-				}).catch(error => {
-				if (error.sqlState == 45000) {
-					res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
-				} else {
-					res.status(500).json({ message: error.message });
-				}
-			});
+				})
+				.catch((error) => {
+					if (error.sqlState == 45000) {
+						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
+					} else {
+						res.status(500).json({ message: error.message });
+					}
+				});
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {
@@ -42,17 +43,7 @@ class VocabularyControllerClass {
 				pronunciation = await uploadAudio(pronunciation, [word]);
 			}
 
-
-			conn.query("CALL SP_InsertNewWord(?,?,?,?,?,?,?,?)", [
-				courseId,
-				userId,
-				word,
-				definition,
-				image,
-				pronunciation,
-				levelId,
-				type,
-			])
+			conn.query("CALL SP_InsertNewWord(?,?,?,?,?,?,?,?)", [courseId, userId, word, definition, image, pronunciation, levelId, type])
 				.then((response) => {
 					res.status(200).json({ newWord: response[0][0][0] });
 				})
@@ -74,28 +65,17 @@ class VocabularyControllerClass {
 			let { courseId, levelId, wordId, word, definition, image, pronunciation, type } = req.body;
 			if (!courseId || !levelId || !wordId) return res.status(404).json({ message: "Not found" });
 
-
-			if (image) {
+			if (image && !validation.url(image)) {
 				image = await uploadImage(image, [word]);
 			}
 
-			if (pronunciation) {
+			if (pronunciation && !validation.url(pronunciation)) {
 				pronunciation = await uploadAudio(pronunciation, [word]);
 			}
 
 			console.log(courseId, levelId, wordId, word, definition, image, pronunciation, type);
 
-			conn.query("CALL SP_UpdateWord(?,?,?,?,?,?,?,?,?)", [
-				courseId,
-				userId,
-				levelId,
-				wordId,
-				word,
-				type,
-				definition,
-				image,
-				pronunciation,
-			])
+			conn.query("CALL SP_UpdateWord(?,?,?,?,?,?,?,?,?)", [courseId, userId, levelId, wordId, word, type, definition, image, pronunciation])
 				.then((response) => {
 					res.status(200).json({ updatedWord: response[0][0][0] });
 				})

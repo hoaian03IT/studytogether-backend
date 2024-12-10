@@ -59,7 +59,6 @@ app.listen(port, () => {
 	console.log(`The system listening on port ${port}`);
 });
 
-
 // socket handler
 const httpServer = createServer(app);
 const socketIo = new Server(httpServer, {
@@ -70,7 +69,8 @@ const socketIo = new Server(httpServer, {
 
 const userSockets = new Map();
 
-socketIo.on("connection", (socket) => { ///Handle khi có connect từ client tới
+socketIo.on("connection", (socket) => {
+	///Handle khi có connect từ client tới
 	const count = socketIo.engine.clientsCount;
 	socket.emit("online-users", { onlineUser: count });
 
@@ -82,10 +82,9 @@ socketIo.on("connection", (socket) => { ///Handle khi có connect từ client t�
 	});
 
 	socket.on("course-enrollment", async ({ enrollmentId }) => {
-		const {
-			notificationId,
-			ownerUsername,
-		} = await NotificationController.createNotificationCourseRegistration(enrollmentId);
+		const { notificationId, ownerUsername } = await NotificationController.createNotificationCourseRegistration(enrollmentId);
+
+		console.log({ notificationId, ownerUsername });
 
 		let socketId = userSockets.get(ownerUsername);
 
