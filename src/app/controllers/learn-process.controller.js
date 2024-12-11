@@ -1,4 +1,4 @@
-const { pool } = require("../../connectDB");
+const { pool } = require("../../db/connectDB.js");
 const { CommonHelpers } = require("../helpers/commons");
 const { LearnProcessHelper } = require("../helpers/learn-process.helper");
 

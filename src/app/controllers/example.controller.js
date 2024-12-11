@@ -1,4 +1,4 @@
-const { pool } = require("../../connectDB");
+const { pool } = require("../../db/connectDB.js");
 const { CommonHelpers } = require("../helpers/commons");
 
 class ExampleControllerClass {
@@ -11,9 +11,7 @@ class ExampleControllerClass {
 
 			if (!courseId) return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 
-			const queryString = wordId
-				? `CALL SP_GetExampleByWord(${courseId},${userId},${wordId})`
-				: `CALL SP_GetAllExample(${courseId},${userId})`;
+			const queryString = wordId ? `CALL SP_GetExampleByWord(${courseId},${userId},${wordId})` : `CALL SP_GetAllExample(${courseId},${userId})`;
 
 			conn.query(queryString)
 				.then((response) => {
@@ -43,8 +41,7 @@ class ExampleControllerClass {
 			const { courseId, wordId, title, sentence, explanation } = req.body;
 			const { "user id": userId } = req.user;
 
-			if (!courseId || !wordId || !title || !sentence)
-				return res.status(404).json({ errorCode: "MISS_PARAMETER" });
+			if (!courseId || !wordId || !title || !sentence) return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 
 			conn.query("CALL SP_AddNewExample(?,?,?,?,?,?)", [courseId, userId, wordId, title, sentence, explanation])
 				.then((response) => {
@@ -73,18 +70,9 @@ class ExampleControllerClass {
 			console.log(courseId, wordId, exampleId, title, sentence, explanation);
 			const { "user id": userId } = req.user;
 
-			if (!courseId || !wordId || !title || !sentence)
-				return res.status(404).json({ errorCode: "MISS_PARAMETER" });
+			if (!courseId || !wordId || !title || !sentence) return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 
-			conn.query("CALL SP_UpdateExample(?,?,?,?,?,?,?)", [
-				courseId,
-				userId,
-				wordId,
-				exampleId,
-				title,
-				sentence,
-				explanation,
-			])
+			conn.query("CALL SP_UpdateExample(?,?,?,?,?,?,?)", [courseId, userId, wordId, exampleId, title, sentence, explanation])
 				.then((response) => {
 					res.status(200).json({ updatedExample: response[0][0][0] });
 				})

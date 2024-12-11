@@ -1,7 +1,7 @@
 const schedule = require("node-schedule");
 const Queue = require("bull");
 const { transporter: nodemailerTransporter } = require("../../config/nodemailer");
-const { pool } = require("../../connectDB"); // Job Queue
+const { pool } = require("../../db/connectDB.js"); // Job Queue
 const Redis = require("ioredis");
 const { NotificationController } = require("./notification.controller");
 const { CommonHelpers } = require("../helpers/commons");
@@ -218,7 +218,7 @@ class ReminderController {
 	 * 					year (*)
 	 */
 	scheduleReminderJob() {
-		schedule.scheduleJob("42 2 * * *", async () => {
+		schedule.scheduleJob("05 10 * * *", async () => {
 			console.log("Starting daily reminder job...");
 			await this.processAllUsers();
 		});

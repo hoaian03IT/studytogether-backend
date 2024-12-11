@@ -1,4 +1,4 @@
-const { pool } = require("../../connectDB");
+const { pool } = require("../../db/connectDB.js");
 const { CommonHelpers } = require("../helpers/commons");
 
 class LanguageControllerClass {

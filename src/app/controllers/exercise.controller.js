@@ -1,4 +1,4 @@
-const { pool } = require("../../connectDB");
+const { pool } = require("../../db/connectDB.js");
 const { uploadImage, uploadAudio } = require("../../utils/uploadToCloud");
 const { CommonHelpers } = require("../helpers/commons");
 const { validation } = require("../../utils/inputValidations");

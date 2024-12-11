@@ -1,5 +1,5 @@
 const { get_access_token, endpoint_url } = require("../../payments/paypal/get-access-token");
-const { pool } = require("../../connectDB");
+const { pool } = require("../../db/connectDB.js");
 const { vnpay } = require("../../payments/vnpay/config");
 const { dateFormat, ProductCode, VnpLocale, VerifyReturnUrl } = require("vnpay");
 const axios = require("axios");

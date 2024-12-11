@@ -1,8 +1,6 @@
 const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
-const { pool } = require("../../connectDB.js");
-const { generateRefreshToken, generateAccessToken } = require("../../utils/generateToken.js");
 const bcrypt = require("bcrypt");
+const { pool } = require("../../db/connectDB.js");
 const { transporter } = require("../../config/nodemailer.js");
 const { validation } = require("../../utils/inputValidations.js");
 const { generatePassword } = require("../../utils/passwordGenerate.js");
@@ -207,21 +205,112 @@ class Auth {
 
 			conn.query("CALL SP_GetNewPassword(?, ?)", [newHashedPassword, email])
 				.then(async () => {
-					const info = await transporter.sendMail({
+					const info = transporter.sendMail({
 						from: {
 							name: "StudyTogether😊",
 							address: process.env.NODEMAILER_USER,
 						}, // sender address
 						to: email, // list of receivers
 						subject: "Your new password", // Subject line
-						text: "Hello, guys. We are StudyTogether administrators", // plain text body
-						html: `
-                            <p>We have received a request to change the password for your account. Below is your new password:</p>
-                            <p>Your new password: <strong style="font-size: 20px; background-color: #eee">${newPassword}</strong> </p>
-                            <p style="color: red">Please use this new password to log in to your StudyTogether account and change your password.</p>
-                            <p>Your friend,</p>
-                            <p><strong>StudyTogether</strong></p>
-                        `, // html body
+						text: "Hello, guys. We are StudyTogether", // plain text body
+						html: `<!DOCTYPE html>
+								<html lang="en">
+								<head>
+									<meta charset="UTF-8">
+									<meta name="viewport" content="width=device-width, initial-scale=1.0">
+									<title>StudyTogether - Password Reset</title>
+									<style>
+										body {
+											font-family: 'Arial', sans-serif;
+											line-height: 1.6;
+											background-color: #f4f4f4;
+											margin: 0;
+											padding: 0;
+											color: #333;
+										}
+										.email-container {
+											max-width: 600px;
+											margin: 20px auto;
+											background-color: white;
+											border-radius: 8px;
+											box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+											overflow: hidden;
+										}
+										.email-header {
+											background-color: #5cc6ee;
+											color: white;
+											text-align: center;
+											padding: 20px;
+										}
+										.email-header h1 {
+											margin: 0;
+											font-size: 24px;
+										}
+										.email-body {
+											padding: 30px;
+										}
+										.password-box {
+											background-color: #F3F4F6;
+											border: 2px dashed #5cc6ee;
+											text-align: center;
+											padding: 20px;
+											margin: 20px 0;
+											border-radius: 8px;
+										}
+										.password-box strong {
+											font-size: 24px;
+											color: #FF6636;
+											letter-spacing: 2px;
+										}
+										.email-footer {
+											background-color: #5cc6ee;
+											text-align: center;
+											padding: 15px;
+											font-size: 12px;
+											color: #6B7280;
+										}
+										.cta-button {
+											display: inline-block;
+											background-color: #5cc6ee;
+											color: white;
+											padding: 12px 24px;
+											text-decoration: none;
+											border-radius: 5px;
+											margin-top: 20px;
+										}
+										.cta-button:hover {
+											color: white;
+										}
+									</style>
+								</head>
+								<body>
+									<div class="email-container">
+										<div class="email-header">
+											<h1>StudyTogether</h1>
+										</div>
+										<div class="email-body">
+											<h2>Password Reset</h2>
+											<p>Hello User,</p>
+											<p>We received a request to reset your password. Here's your new temporary password:</p>
+											
+											<div class="password-box">
+												<strong>${newPassword}</strong>
+											</div>
+											
+											<p>Please log in with this temporary password and change it immediately in your account settings.</p>
+											
+											<a href="${process.env.CLIENT_URL + process.env.CLIENT_LOGIN_PATHNAME}" class="cta-button">Log In to StudyTogether</a>
+											
+											<p style="margin-top: 20px;">If you did not request a password reset, please contact our support team.</p>
+										</div>
+										<div class="email-footer">
+											© 2024 StudyTogether. All rights reserved.
+											<br>
+											This is an automated email. Please do not reply.
+										</div>
+									</div>
+								</body>
+								</html>`,
 					});
 					res.status(200).json({ messageCode: "RESET_PW_SUCCESS" });
 				})

@@ -1,4 +1,4 @@
-const { pool } = require("../../connectDB");
+const { pool } = require("../../db/connectDB.js");
 const { CommonHelpers } = require("../helpers/commons");
 
 class Role {
@@ -6,9 +6,7 @@ class Role {
 		let conn;
 		try {
 			conn = await pool.getConnection();
-			conn.query(
-				"SELECT `role id`, `role name` FROM roles WHERE LOWER(`role name`) NOT IN ('admin', 'administrator')",
-			)
+			conn.query("SELECT `role id`, `role name` FROM roles WHERE LOWER(`role name`) NOT IN ('admin', 'administrator')")
 				.then(([records]) => {
 					res.status(200).json(records);
 				})

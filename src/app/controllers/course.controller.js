@@ -1,5 +1,5 @@
 const { validation } = require("../../utils/inputValidations");
-const { pool } = require("../../connectDB");
+const { pool } = require("../../db/connectDB.js");
 const { uploadImage } = require("../../utils/uploadToCloud");
 const { CommonHelpers } = require("../helpers/commons");
 const cloudinary = require("cloudinary").v2;

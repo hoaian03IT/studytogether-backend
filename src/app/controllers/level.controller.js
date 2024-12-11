@@ -1,4 +1,4 @@
-const { pool } = require("../../connectDB");
+const { pool } = require("../../db/connectDB.js");
 const { CommonHelpers } = require("../helpers/commons");
 
 class LevelControllerClass {
@@ -71,7 +71,7 @@ class LevelControllerClass {
 			conn = await pool.getConnection();
 			const { "user id": userId } = req.user;
 			const { "course-id": courseId, "level-id": levelId } = req.query;
-			
+
 			if (!courseId || !levelId) {
 				// MISS_PARAMETER: Thiếu tham số
 				return res.status(404).json({ errorCode: "MISS_PARAMETER" });

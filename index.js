@@ -10,12 +10,8 @@ require("./src/config/cloudinary");
 const compression = require("compression");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
-const { pool } = require("./src/connectDB");
 const { NotificationController } = require("./src/app/controllers/notification.controller");
 const { ReminderController } = require("./src/app/controllers/reminder.controller");
-
-
-
 
 const app = express();
 const port = process.env.SERVER_POST || 4000;
@@ -30,8 +26,6 @@ const corsOptions = {
 	preflightContinue: false,
 };
 app.use(cors(corsOptions));
-
-
 
 // parse request
 app.use(bodyParser.urlencoded({ extended: true, limit: "20mb" }));
@@ -60,7 +54,6 @@ new ReminderController({
 	batchSize: 100,
 });
 app.use(express.json());
-
 
 app.listen(port, () => {
 	console.log(`The system listening on port ${port}`);
