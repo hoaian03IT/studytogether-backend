@@ -43,18 +43,9 @@ class ExampleControllerClass {
 
 			if (!courseId || !wordId || !title || !sentence) return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 
-			conn.query("CALL SP_AddNewExample(?,?,?,?,?,?)", [courseId, userId, wordId, title, sentence, explanation])
-				.then((response) => {
-					res.status(200).json({ newExample: response[0][0][0] });
-				})
-				.catch((error) => {
-					if (error.sqlState == 45001) {
-						// COURSE_NOT_FOUND: không tìm thấy khoá phù hợp hoặc không sở hữu khoá này
-						res.status(404).json({ errorCode: "WORD_NOT_FOUND" });
-					} else {
-						res.status(500).json({ error: error.message });
-					}
-				});
+			let response = await conn.query("CALL SP_AddNewExample(?,?,?,?,?,?)", [courseId, userId, wordId, title, sentence, explanation]);
+			console.log(response[0][0]);
+			res.status(200).json({ newExample: response[0][0][0] });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {

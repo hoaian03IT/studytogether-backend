@@ -12,7 +12,12 @@ class VocabularyControllerClass {
 			const { courseId } = req.params;
 			if (!courseId) return res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 			let response = await conn.query("CALL SP_GetAllWords(?, ?)", [courseId, userId]);
-			res.status(200).json({ vocabularyList: response[0][0] });
+			res.status(200).json({
+				vocabularyList: [...response[0][1].slice(1)],
+				targetLanguage: response[0][0][0]?.["target language"],
+				sourceLanguage: response[0][0][0]?.["source language"],
+				courseId: response[0][0][0]?.["course id"],
+			});
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {

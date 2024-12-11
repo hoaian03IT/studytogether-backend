@@ -203,7 +203,7 @@ class Course {
 				image,
 				Boolean(isPrivate),
 			]);
-			res.status(200).json({ updatedCourse: response[0][0] });
+			res.status(200).json({ updatedCourse: response[0][0], messageCode: "UPDATE_COURSE_SUCCESS" });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {
