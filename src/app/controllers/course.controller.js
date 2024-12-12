@@ -2,6 +2,7 @@ const { validation } = require("../../utils/inputValidations");
 const { pool } = require("../../db/connectDB.js");
 const { uploadImage } = require("../../utils/uploadToCloud");
 const { CommonHelpers } = require("../helpers/commons");
+const { redisConfig } = require("../../redis/config.js");
 const cloudinary = require("cloudinary").v2;
 
 class Course {
@@ -10,7 +11,8 @@ class Course {
 		try {
 			conn = await pool.getConnection();
 			const { "course-id": courseId } = req.query;
-			let response = await conn.query("CALL SP_GetCourseInformation(?)", [courseId]);
+			const { "user id": userId } = req.user;
+			let response = await conn.query("CALL SP_GetCourseInformation(?,?)", [courseId, userId]);
 			res.status(200).json(response[0][0][0]);
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
@@ -24,7 +26,8 @@ class Course {
 		try {
 			conn = await pool.getConnection();
 			const { "course-id": courseId } = req.query;
-			let response = await conn.query("CALL SP_GetCourseContent(?)", [courseId]);
+			const { "user id": userId } = req.user;
+			let response = await conn.query("CALL SP_GetCourseContent(?, ?)", [courseId, userId]); // limit 20
 			let content = { courseId, levels: [] };
 			let array = response[0][0];
 			let levels = [];
@@ -69,7 +72,8 @@ class Course {
 		try {
 			conn = await pool.getConnection();
 			const { "course-id": courseId } = req.query;
-			conn.query("CALL SP_GetCourseComment(?)", [courseId])
+			const { "user id": userId } = req.user;
+			conn.query("CALL SP_GetCourseComment(?,?)", [courseId, userId])
 				.then((response) => {
 					let comments = {};
 					let array = response[0][0];
@@ -235,8 +239,9 @@ class Course {
 		try {
 			conn = await pool.getConnection();
 			const { "course-id": courseId } = req.query;
+			const { "user id": userId } = req.user;
 
-			const responseSQl = await conn.query("CALL SP_GetCoursePrice(?)", [courseId]);
+			const responseSQl = await conn.query("CALL SP_GetCoursePrice(?,?)", [courseId, userId]);
 			res.status(200).json({ ...responseSQl[0][0][0] });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);

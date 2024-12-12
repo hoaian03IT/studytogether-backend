@@ -5,8 +5,8 @@ const { dateFormat, ProductCode, VnpLocale, VerifyReturnUrl } = require("vnpay")
 const axios = require("axios");
 const { CommonHelpers } = require("../helpers/commons");
 
-async function getCoursePrices(connection, courseId) {
-	let responsePrice = await connection.query("CALL SP_GetCoursePrice(?)", [courseId]);
+async function getCoursePrices(connection, courseId, userId) {
+	let responsePrice = await connection.query("CALL SP_GetCoursePrice(?,?)", [courseId, userId]);
 	let { price, discount } = responsePrice[0][0][0];
 	let handledPrice = price * (1 - discount) >= 0 ? price * (1 - discount) : 0;
 
@@ -30,7 +30,7 @@ class PaymentController {
 			const percentageFee = 0.029; // 2.9% PayPal fee
 			let access_token = await get_access_token();
 			if (access_token) {
-				let { handledPrice } = await getCoursePrices(conn, courseId);
+				let { handledPrice } = await getCoursePrices(conn, courseId, userId);
 				handledPrice = handledPrice + handledPrice * percentageFee;
 
 				let order_data_json = {
@@ -119,7 +119,7 @@ class PaymentController {
 				return res.status(406).json({ errorCode: "COURSE_ENROLLED" });
 			}
 
-			let { handledPrice: USDPrice } = await getCoursePrices(conn, courseId);
+			let { handledPrice: USDPrice } = await getCoursePrices(conn, courseId, userId);
 			// convert USD to VND real-time
 			let { data } = await axios.get(process.env.EXCHANGE_RATE_API);
 

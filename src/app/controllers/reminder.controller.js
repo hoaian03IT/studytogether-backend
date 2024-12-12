@@ -2,21 +2,13 @@ const schedule = require("node-schedule");
 const Queue = require("bull");
 const { transporter: nodemailerTransporter } = require("../../config/nodemailer");
 const { pool } = require("../../db/connectDB.js"); // Job Queue
-const Redis = require("ioredis");
 const { NotificationController } = require("./notification.controller");
 const { CommonHelpers } = require("../helpers/commons");
+const { redisConfig } = require("../../redis/config.js");
 
 class ReminderController {
 	constructor(config) {
-		this.redis = new Redis({
-			host: "localhost",
-			port: 6379,
-			maxRetriesPerRequest: 50, // Increased retry limit
-			connectTimeout: 10000, // 10-second connection timeout
-			retryStrategy: (times) => {
-				return Math.min(times * 50, 2000);
-			},
-		});
+		this.redis = redisConfig;
 
 		// Email transporter setup
 		this.transporter = nodemailerTransporter;

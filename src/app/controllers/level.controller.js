@@ -14,7 +14,7 @@ class LevelControllerClass {
 				return res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 			}
 
-			let response = await conn.query("CALL SP_GetCourseLevels(?,?)", [courseId, userId]);
+			let response = await conn.query("CALL SP_GetOwnCourseLevels(?,?)", [courseId, userId]);
 			res.status(200).json({ levels: response[0][0] });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);

@@ -9,11 +9,11 @@ const timeLog = (req, res, next) => {
 };
 router.use(timeLog);
 
-router.get("/overview", CourseController.getCourseInformation);
-router.get("/comment", CourseController.getCourseComment);
-router.get("/content", CourseController.getCourseContent);
+router.get("/overview", [authenticate], CourseController.getCourseInformation);
+router.get("/comment", [authenticate], CourseController.getCourseComment);
+router.get("/content", [authenticate], CourseController.getCourseContent);
 router.get("/languages", CourseController.getCourseLanguages);
-router.get("/prices", CourseController.getCoursePrice);
+router.get("/prices", [authenticate], CourseController.getCoursePrice);
 router.get("/own-course", [authenticate], CourseController.getOwnCourses);
 router.get("/enrolled-course", [authenticate], CourseController.getEnrolledCourse);
 router.get("/search-course", CourseController.searchCourse);
