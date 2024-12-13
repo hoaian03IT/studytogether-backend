@@ -75,12 +75,12 @@ class Course {
 			const { "user id": userId } = req.user;
 			conn.query("CALL SP_GetCourseComment(?,?)", [courseId, userId])
 				.then((response) => {
-					let comments = {};
+					let comments = new Map();
 					let array = response[0][0];
 					// chia cac comment thanh 2 loai: feedback va replies
 					for (let item of array) {
 						if (item["reply comment id"] === null) {
-							comments[item["comment id"]] = {
+							comments.set(item["comment id"], {
 								commentId: item["comment id"],
 								comment: item["comment"],
 								firstName: item["first name"],
@@ -91,9 +91,9 @@ class Course {
 								rate: item["rate"],
 								role: item["role name"],
 								replies: [],
-							};
+							});
 						} else {
-							comments[item["reply comment id"]].replies.push({
+							comments.get(item["reply comment id"]).replies.push({
 								commentId: item["comment id"],
 								comment: item["comment"],
 								firstName: item["first name"],
@@ -106,7 +106,11 @@ class Course {
 							});
 						}
 					}
-					res.status(200).json(comments);
+					let commentArray = [];
+					for (let [key, value] of comments.entries()) {
+						commentArray.push(value);
+					}
+					res.status(200).json(commentArray);
 				})
 				.catch((error) => {
 					if (error.sqlState == 45000) {
