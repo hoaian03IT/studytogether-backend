@@ -106,10 +106,7 @@ class Course {
 							});
 						}
 					}
-					let commentArray = [];
-					for (let [key, value] of comments.entries()) {
-						commentArray.push(value);
-					}
+					let commentArray = [...comments.values()];
 					res.status(200).json(commentArray);
 				})
 				.catch((error) => {

@@ -11,7 +11,7 @@ class CommonHelpers {
 	 */
 	static handleError(error, res) {
 		console.error(error);
-		if (error?.sqlState >= 45000) {
+		if (error?.sqlState >= 45000 && error?.sqlState <= 45100) {
 			res.status(406).json({ errorCode: error?.sqlMessage });
 		} else {
 			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });

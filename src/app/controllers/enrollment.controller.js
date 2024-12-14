@@ -42,14 +42,30 @@ class EnrollmentController {
 		}
 	}
 
-	async stopEnrollment(req, res) {
+	async restartEnrollment(req, res) {
 		let conn;
 		try {
 			conn = await pool.getConnection();
 			const { "user id": userId } = req.user;
 			const { courseId } = req.body;
 
-			let responseSql = await conn.query("CALL SP_StopEnrollment(?, ?)", [userId, courseId]);
+			const responseSql = await conn.query("CALL SP_RestartEnrollmentCourse(?,?)", [userId, courseId]);
+			res.status(200).json({ ...responseSql[0][0][0], messageCode: "COURSE_RESTARTED" });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
+
+	async quitEnrollment(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { "user id": userId } = req.user;
+			const { courseId } = req.body;
+
+			let responseSql = await conn.query("CALL SP_QuitEnrollment(?, ?)", [userId, courseId]);
 
 			res.status(200).json({ messageCode: "COURSE_STOPPED" });
 		} catch (error) {
