@@ -396,7 +396,7 @@ class Auth {
 						.json({ ...rest, message: "login" });
 				})
 				.catch(async (err) => {
-					if (err.sqlState != 45000) return res.status(401).json({ message: err.message });
+					if (err.sqlState >= 45000) return res.status(401).json({ messageCode: err.sqlMessage });
 					// trường hợp procedure báo lỗi không có tài khoản thì tạo
 					if (!role) return res.status(401).json({ errorCode: "REGISTER_FIRST" });
 
