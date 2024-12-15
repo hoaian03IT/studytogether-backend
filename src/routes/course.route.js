@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const CourseController = require("../app/controllers/course.controller.js");
 const { authenticate } = require("../app/middlewares/authenticate.js");
+const { verifyAdmin } = require("../app/middlewares/verifyRole.js");
 
 // middleware that is specific to this router
 const timeLog = (req, res, next) => {
@@ -21,5 +22,8 @@ router.post("/create", [authenticate], CourseController.createCourseInformation)
 router.post("/update", [authenticate], CourseController.updateCourseInformation);
 router.delete("/destroy/:courseId", [authenticate], CourseController.destroyOwnCourse);
 router.post("/price-update", [authenticate], CourseController.updateCoursePrice);
+
+// admin
+router.get("/admin/all", [authenticate, verifyAdmin], CourseController.listCourses);
 
 module.exports = router;

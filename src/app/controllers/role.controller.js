@@ -6,11 +6,8 @@ class Role {
 		let conn;
 		try {
 			conn = await pool.getConnection();
-			conn.query("SELECT `role id`, `role name` FROM roles WHERE LOWER(`role name`) NOT IN ('admin', 'administrator')")
-				.then(([records]) => {
-					res.status(200).json(records);
-				})
-				.catch((err) => res.status(400).json({ message: err.message }));
+			let response = await conn.query("CALL SP_GetRoles()");
+			res.status(200).json({ roles: response[0][0] });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {

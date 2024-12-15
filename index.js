@@ -15,11 +15,12 @@ const { ReminderController } = require("./src/app/controllers/reminder.controlle
 
 const app = express();
 const port = process.env.SERVER_POST || 4000;
-const client_url = process.env.CLIENT_URL;
+const client_url1 = process.env.CLIENT_URL1;
+const client_url2 = process.env.CLIENT_URL2;
 
 const corsOptions = {
 	credentials: true,
-	origin: client_url,
+	origin: [client_url1, client_url2],
 	methods: ["GET", "PUT", "POST", "DELETE"],
 	// allowedHeaders: "Content-Type,Authorization",
 	optionsSuccessStatus: 200,

@@ -34,7 +34,7 @@ class Auth {
 						res.status(401).json({ errorCode: "INCORRECT_ACCOUNT/PASSWORD" });
 						return;
 					}
-
+					console.log({ userInfo });
 					const { accessToken, refreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
 
 					const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
@@ -139,6 +139,8 @@ class Auth {
 			conn = await pool.getConnection();
 			// lấy token từ cookies client
 			const refreshToken = req.cookies["refresh_token"];
+
+			console.log({ refreshToken });
 
 			jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err, userInfo) => {
 				if (err) {

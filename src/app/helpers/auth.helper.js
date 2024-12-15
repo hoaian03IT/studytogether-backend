@@ -10,22 +10,19 @@ class AuthHelper {
 
 	static async generateTokens(userInfo, conn) {
 		const maxAge = 60 * 60 * 24 * 365 * 1000; // hạn 100 ngày (ms)
-		const accessToken = generateAccessToken({ userId: userInfo["user id"], email: userInfo["email"] });
+		const accessToken = generateAccessToken({ userId: userInfo["user id"], email: userInfo["email"], role: userInfo["role name"] });
 		const refreshToken = generateRefreshToken({
 			userId: userInfo["user id"],
 			email: userInfo["email"],
 			expiresIn: maxAge / 1000, // hạn 100 ngày (s)
+			role: userInfo["role name"],
 		});
 
 		let expiredAt = new Date();
 		expiredAt.setMilliseconds(expiredAt.getMilliseconds() + maxAge);
 
 		// save refresh token to database
-		await conn.query("INSERT INTO `refresh tokens` (`user id`, token, `expired at`) VALUE (?, ?, ?);", [
-			userInfo["user id"],
-			refreshToken,
-			expiredAt,
-		]);
+		await conn.query("INSERT INTO `refresh tokens` (`user id`, token, `expired at`) VALUE (?, ?, ?);", [userInfo["user id"], refreshToken, expiredAt]);
 		return { refreshToken, accessToken, maxAge };
 	}
 

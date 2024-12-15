@@ -373,6 +373,23 @@ class Course {
 			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
+
+	async listCourses(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { ci = null, ri = null, tli = null, sli = null, mnp = 0, mxp = 0, np = 1, lm = 20 } = req.query;
+			const query = `CALL SP_AdminCourseView(${ci ? ci : null},${ri ? ri : null},${tli ? tli : null},${sli ? sli : null},${mnp},${mxp},${np},${lm})`;
+
+			let responseSql = await conn.query(query);
+
+			res.status(200).json({ courses: responseSql[0][0] });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
 }
 
 module.exports = new Course();
