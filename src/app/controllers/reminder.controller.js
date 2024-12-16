@@ -43,8 +43,6 @@ class ReminderController {
 				`${currentDay.getFullYear()}-${currentDay.getMonth() + 1}-${currentDay.getDate()}`,
 			]);
 
-			console.log(limit, offset, `${currentDay.getFullYear()}-${currentDay.getMonth() + 1}-${currentDay.getDate()}`);
-
 			return responseSql[0][0];
 		} catch (error) {
 			console.error(error);

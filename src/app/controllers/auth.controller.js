@@ -8,6 +8,7 @@ const { google } = require("googleapis");
 const { default: axios } = require("axios");
 const { CommonHelpers } = require("../helpers/commons");
 const { AuthHelper } = require("../helpers/auth.helper");
+const { redisConfig } = require("../../redis/config.js");
 
 const oauth2Client = new google.auth.OAuth2();
 
@@ -34,7 +35,6 @@ class Auth {
 						res.status(401).json({ errorCode: "INCORRECT_ACCOUNT/PASSWORD" });
 						return;
 					}
-					console.log({ userInfo });
 					const { accessToken, refreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
 
 					const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
@@ -140,17 +140,16 @@ class Auth {
 			// lấy token từ cookies client
 			const refreshToken = req.cookies["refresh_token"];
 
-			console.log({ refreshToken });
-
 			jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err, userInfo) => {
 				if (err) {
 					console.error(err);
 					return;
 				}
+				// kiểm tra xem token đã hết hạn chưa
+				let result = await redisConfig.get(`${userInfo["user id"]}:refreshtoken`);
 
-				const response = await conn.query("SELECT 1 FROM `refresh tokens` WHERE `user id`=? AND token=?", [userInfo["user id"], refreshToken]);
-				if (response[0].length === 0) {
-					return res.status(401).json({ errorCode: "UNAUTHORIZED" });
+				if (result !== refreshToken) {
+					return res.status(403).json({ errorCode: "UNAUTHENTICATED" });
 				}
 
 				const { accessToken, refreshToken: newRefreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);

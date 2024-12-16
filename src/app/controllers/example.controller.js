@@ -44,7 +44,6 @@ class ExampleControllerClass {
 			if (!courseId || !wordId || !title || !sentence) return res.status(404).json({ errorCode: "MISS_PARAMETER" });
 
 			let response = await conn.query("CALL SP_AddNewExample(?,?,?,?,?,?)", [courseId, userId, wordId, title, sentence, explanation]);
-			console.log(response[0][0]);
 			res.status(200).json({ newExample: response[0][0][0] });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
@@ -58,7 +57,6 @@ class ExampleControllerClass {
 		try {
 			conn = await pool.getConnection();
 			const { courseId, wordId, exampleId, title, sentence, explanation } = req.body;
-			console.log(courseId, wordId, exampleId, title, sentence, explanation);
 			const { "user id": userId } = req.user;
 
 			if (!courseId || !wordId || !title || !sentence) return res.status(404).json({ errorCode: "MISS_PARAMETER" });

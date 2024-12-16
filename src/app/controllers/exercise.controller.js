@@ -93,8 +93,6 @@ class ExerciseController {
 			}
 			if (audio && !validation.url(audio)) audio = await uploadAudio(audio, [title]);
 
-			console.log({ image, audio });
-
 			let response = await conn.query("CALL SP_UpdateExercise(?,?,?,?,?,?,?,?,?,?,?,?,?)", [
 				userId,
 				courseId,

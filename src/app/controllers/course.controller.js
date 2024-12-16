@@ -2,7 +2,6 @@ const { validation } = require("../../utils/inputValidations");
 const { pool } = require("../../db/connectDB.js");
 const { uploadImage } = require("../../utils/uploadToCloud");
 const { CommonHelpers } = require("../helpers/commons");
-const { redisConfig } = require("../../redis/config.js");
 const cloudinary = require("cloudinary").v2;
 
 class Course {

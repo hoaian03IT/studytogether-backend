@@ -1,6 +1,8 @@
 const bcrypt = require("bcrypt");
 const { generateAccessToken, generateRefreshToken } = require("../../utils/generateToken");
 const crypto = require("crypto");
+const { redis } = require("googleapis/build/src/apis/redis");
+const { redisConfig } = require("../../redis/config");
 
 class AuthHelper {
 	static async convertHashedPassword(password) {
@@ -21,8 +23,8 @@ class AuthHelper {
 		let expiredAt = new Date();
 		expiredAt.setMilliseconds(expiredAt.getMilliseconds() + maxAge);
 
-		// save refresh token to database
-		await conn.query("INSERT INTO `refresh tokens` (`user id`, token, `expired at`) VALUE (?, ?, ?);", [userInfo["user id"], refreshToken, expiredAt]);
+		// save refresh token to redis
+		await redisConfig.set(`${userInfo["user id"]}:refreshtoken`, refreshToken, "EX", maxAge);
 		return { refreshToken, accessToken, maxAge };
 	}
 

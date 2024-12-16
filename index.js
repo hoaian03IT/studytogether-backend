@@ -12,6 +12,7 @@ const { createServer } = require("http");
 const { Server } = require("socket.io");
 const { NotificationController } = require("./src/app/controllers/notification.controller");
 const { ReminderController } = require("./src/app/controllers/reminder.controller");
+const { redisConfig } = require("./src/redis/config");
 
 const app = express();
 const port = process.env.SERVER_POST || 4000;

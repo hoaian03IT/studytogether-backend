@@ -75,8 +75,6 @@ class VocabularyControllerClass {
 				pronunciation = await uploadAudio(pronunciation, [word]);
 			}
 
-			console.log(courseId, levelId, wordId, word, definition, image, pronunciation, type);
-
 			let response = await conn.query("CALL SP_UpdateWord(?,?,?,?,?,?,?,?,?, ?)", [
 				courseId,
 				userId,

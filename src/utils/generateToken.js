@@ -6,7 +6,6 @@ function generateAccessToken({ userId, email, role }) {
 			"user id": userId,
 			email: email,
 			"role name": role,
-			date: new Date().toISOString(),
 		},
 		process.env.ACCESS_TOKEN_SECRET,
 		{
@@ -21,7 +20,6 @@ function generateRefreshToken({ userId, email, role, expiresIn }) {
 			"user id": userId,
 			email: email,
 			"role name": role,
-			date: new Date().toISOString(),
 		},
 		process.env.REFRESH_TOKEN_SECRET,
 		{
