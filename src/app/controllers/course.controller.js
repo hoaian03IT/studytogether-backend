@@ -2,6 +2,7 @@ const { validation } = require("../../utils/inputValidations");
 const { pool } = require("../../db/connectDB.js");
 const { uploadImage } = require("../../utils/uploadToCloud");
 const { CommonHelpers } = require("../helpers/commons");
+const { transporter } = require("../../config/nodemailer.js");
 const cloudinary = require("cloudinary").v2;
 
 class Course {
@@ -425,6 +426,143 @@ class Course {
 			let response = await conn.query("CALL SP_EnableCourse(?,?)", [userId, courseId]);
 
 			res.status(200).json({ messageCode: "ENABLE_COURSE_SUCCESS", ...response[0][0][0] });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
+
+	async getPendingCourse(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { li = 10, np = 1 } = req.query;
+
+			let response = await conn.query("CALL SP_AdminListCoursePending(?,?)", [li, np]);
+
+			res.status(200).json({ courses: response[0][0] });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
+
+	async approveCourse(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { courseId } = req.body;
+
+			await conn.query("CALL SP_AdminApproveCourse(?)", [courseId]);
+
+			res.status(200).json({ courseId: courseId });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
+
+	async rejectCourse(req, res) {
+		let conn;
+		try {
+			let defaultReason = `We regret to inform you that your course submission has been rejected as the content and information provided do not align with our platform's policies and educational standards. 
+			The course materials require significant improvements in terms of quality, organization, and learning objectives to meet our requirements. We encourage you to review our course creation guidelines and resubmit after making the necessary adjustments.`;
+			conn = await pool.getConnection();
+			const { courseId, rejectContent } = req.body;
+
+			let response = await conn.query("CALL SP_AdminRejectCourse(?)", [courseId]);
+
+			// handle email
+			transporter.sendMail({
+				from: {
+					name: "StudyTogether😊",
+					address: process.env.NODEMAILER_USER,
+				}, // sender address
+				to: response[0][0][0]?.["email"], // list of receivers
+				subject: "Course rejection ❌", // Subject line
+				text: "Hello, my friend. Your posting course was reject with some reasons", // plain text body
+				html: `
+				<!DOCTYPE html>
+				<html lang="en">
+				<head>
+					<meta charset="UTF-8" />
+					<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+					<link rel="stylesheet" href="src/style.css" />
+				</head>
+				<body>
+					<div
+					class="email-container"
+					style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;"
+					>
+					<div
+						class="header"
+						style="background: #f44336; color: white; padding: 20px; text-align: center;">
+						<h1>Reject your posting course</h1>
+					</div>
+					<div class="course-info" style="padding: 20px; background: #fff;">
+						<div
+						class="course-header"
+						style="display: flex; gap: 20px; margin-bottom: 20px;"
+						>
+						<img
+							class="course-image"
+							src="${response[0][0][0]?.["image"]}"
+							alt="Ảnh khóa học"
+							style="width: 200px; height: 150px; object-fit: cover;"
+						/>
+
+						<div class="course-details">
+							<h2 class="course-name" style="margin: 0 0 10px 0; color: #333;">
+							${response[0][0][0]?.["name"]}
+							</h2>
+							<div class="course-tags" style="margin-bottom: 10px;">
+							<span
+								class="tag"
+								style="background: #e0e0e0; padding: 5px 10px; border-radius: 15px; margin-right: 5px;"
+							>
+								${response[0][0][0]?.["tag"]}
+							</span>
+							</div>
+						</div>
+						</div>
+
+						<!-- Course Description -->
+						<div
+						class="course-description"
+						style="background: #f5f5f5; padding: 15px; border-radius: 5px;"
+						>
+						<h3 style="margin-top: 0;">Course description</h3>
+						<p style="color: #666;"><strong>Short description: </strong>${response[0][0][0]?.["short description"]}</p>
+						<p style="color: #666;"><strong>Detail description: </strong>${response[0][0][0]?.["detailed description"]}</p>
+						</div>
+						<div
+						class="rejection-message"
+						style="margin-top: 20px; padding: 15px; border-left: 4px solid #f44336;"
+						>
+						<h3 style="color: #f44336; margin-top: 0;">Reason for rejection:</h3>
+						<p>${rejectContent || defaultReason}</p>
+						</div>
+						<div
+						class="footer"
+						style="margin-top: 30px; text-align: center; color: #666;"
+						>
+						<p>
+							If you have any questions, please contact us via email:
+							${process.env.NODEMAILER_USER}
+						</p>
+						</div>
+					</div>
+					</div>
+				</body>
+				</html>
+
+				`, // html body
+			});
+
+			res.status(200).json({ courseId: courseId });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {

@@ -27,5 +27,8 @@ router.post("/price-update", [authenticate], CourseController.updateCoursePrice)
 router.get("/admin/all", [authenticate, verifyAdmin], CourseController.listCourses);
 router.post("/admin/disable-course", [authenticate, verifyAdmin], CourseController.disableCourse);
 router.post("/admin/enable-course", [authenticate, verifyAdmin], CourseController.enableCourse);
+router.post("/admin/approve-course", [authenticate, verifyAdmin], CourseController.approveCourse);
+router.post("/admin/reject-course", [authenticate, verifyAdmin], CourseController.rejectCourse);
+router.get("/admin/pending-courses", [authenticate, verifyAdmin], CourseController.getPendingCourse);
 
 module.exports = router;

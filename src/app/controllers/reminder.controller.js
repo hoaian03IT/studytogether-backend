@@ -168,7 +168,7 @@ class ReminderController {
 				  };
 
 			try {
-				await this.transporter.sendMail(mailOptions);
+				this.transporter.sendMail(mailOptions);
 				await NotificationController.createNotificationStreak(userId, currentStreak);
 				console.log(`Reminder sent to ${email} with streak ${currentStreak}`);
 				done();
