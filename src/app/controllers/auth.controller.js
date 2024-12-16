@@ -116,16 +116,16 @@ class Auth {
 			conn = await pool.getConnection();
 			const refreshToken = req.cookies["refresh_token"];
 			const { "user id": userId } = req.user;
-			conn.query("DELETE FROM `refresh tokens` WHERE `user id`=? AND token=?", [userId, refreshToken])
-				.then(() => {
-					// clear cookie từ client
-					res.clearCookie("refresh_token");
 
-					res.status(200).json({ messageCode: "LOGOUT_SUCCESS" });
-				})
-				.catch((err) => {
-					CommonHelpers.handleError(err, res);
-				});
+			let result = await redisConfig.get(`${userId}:refreshtoken:${refreshToken}`);
+
+			if (!result) {
+				return res.status(403).json({ errorCode: "UNAUTHENTICATED" });
+			}
+
+			await redisConfig.del(`${userId}:refreshtoken:${refreshToken}`);
+
+			res.clearCookie("refresh_token").status(200).json({ messageCode: "LOGOUT_SUCCESS" });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {
@@ -146,11 +146,13 @@ class Auth {
 					return;
 				}
 				// kiểm tra xem token đã hết hạn chưa
-				let result = await redisConfig.get(`${userInfo["user id"]}:refreshtoken`);
+				let result = await redisConfig.get(`${userInfo["user id"]}:refreshtoken:${refreshToken}`);
 
-				if (result !== refreshToken) {
+				if (!result) {
 					return res.status(403).json({ errorCode: "UNAUTHENTICATED" });
 				}
+
+				await redisConfig.del(`${userInfo["user id"]}:refreshtoken:${refreshToken}`);
 
 				const { accessToken, refreshToken: newRefreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
 
@@ -161,27 +163,6 @@ class Auth {
 				})
 					.status(200)
 					.json({ messageCode: "REFRESH_TOKEN", token: accessToken });
-
-				// // xoá token hiện tại
-				// conn.query("DELETE FROM `refresh tokens` WHERE `user id`=? AND token=?", [userInfo["user id"], refreshToken])
-				// 	.then(async () => {
-				// 		const {
-				// 			accessToken,
-				// 			refreshToken: newRefreshToken,
-				// 			maxAge,
-				// 		} = await AuthHelper.generateTokens(userInfo, conn);
-				//
-				// 		res.cookie("refresh_token", newRefreshToken, {
-				// 			maxAge: maxAge,
-				// 			httpOnly: true,
-				// 			secure: true,
-				// 		})
-				// 			.status(200)
-				// 			.json({ messageCode: "REFRESH_TOKEN", token: accessToken });
-				// 	})
-				// 	.catch((err) => {
-				// 		CommonHelpers.handleError(err, res);
-				// 	});
 			});
 		} catch (error) {
 			CommonHelpers.handleError(error, res);

@@ -24,7 +24,7 @@ class AuthHelper {
 		expiredAt.setMilliseconds(expiredAt.getMilliseconds() + maxAge);
 
 		// save refresh token to redis
-		await redisConfig.set(`${userInfo["user id"]}:refreshtoken`, refreshToken, "EX", maxAge);
+		await redisConfig.set(`${userInfo["user id"]}:refreshtoken:${refreshToken}`, 1, "EX", maxAge);
 		return { refreshToken, accessToken, maxAge };
 	}
 
