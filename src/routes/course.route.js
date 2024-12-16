@@ -25,5 +25,7 @@ router.post("/price-update", [authenticate], CourseController.updateCoursePrice)
 
 // admin
 router.get("/admin/all", [authenticate, verifyAdmin], CourseController.listCourses);
+router.post("/admin/disable-course", [authenticate, verifyAdmin], CourseController.disableCourse);
+router.post("/admin/enable-course", [authenticate, verifyAdmin], CourseController.enableCourse);
 
 module.exports = router;

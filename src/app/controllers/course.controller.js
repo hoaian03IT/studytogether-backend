@@ -389,6 +389,48 @@ class Course {
 			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
+
+	async disableCourse(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { "user id": userId } = req.user;
+			const { courseId } = req.body;
+
+			if (!courseId) {
+				res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
+			}
+
+			let response = await conn.query("CALL SP_DisableCourse(?,?)", [userId, courseId]);
+
+			res.status(200).json({ messageCode: "DISABLE_COURSE_SUCCESS", ...response[0][0][0] });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
+
+	async enableCourse(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { "user id": userId } = req.user;
+			const { courseId } = req.body;
+
+			if (!courseId) {
+				res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
+			}
+
+			let response = await conn.query("CALL SP_EnableCourse(?,?)", [userId, courseId]);
+
+			res.status(200).json({ messageCode: "ENABLE_COURSE_SUCCESS", ...response[0][0][0] });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
 }
 
 module.exports = new Course();
