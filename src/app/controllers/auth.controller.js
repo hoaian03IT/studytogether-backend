@@ -151,7 +151,7 @@ class Auth {
 				if (!result) {
 					return res.status(403).json({ errorCode: "UNAUTHENTICATED" });
 				}
-
+				// xoa refreshtoken khoi redis
 				await redisConfig.del(`${userInfo["user id"]}:refreshtoken:${refreshToken}`);
 
 				const { accessToken, refreshToken: newRefreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);

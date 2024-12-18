@@ -1,7 +1,6 @@
 const bcrypt = require("bcrypt");
 const { generateAccessToken, generateRefreshToken } = require("../../utils/generateToken");
 const crypto = require("crypto");
-const { redis } = require("googleapis/build/src/apis/redis");
 const { redisConfig } = require("../../redis/config");
 
 class AuthHelper {
@@ -11,12 +10,12 @@ class AuthHelper {
 	}
 
 	static async generateTokens(userInfo, conn) {
-		const maxAge = 60 * 60 * 24 * 365 * 1000; // hạn 100 ngày (ms)
+		const maxAge = 60 * 60 * 24 * 100; // hạn 100 ngày (ms)
 		const accessToken = generateAccessToken({ userId: userInfo["user id"], email: userInfo["email"], role: userInfo["role name"] });
 		const refreshToken = generateRefreshToken({
 			userId: userInfo["user id"],
 			email: userInfo["email"],
-			expiresIn: maxAge / 1000, // hạn 100 ngày (s)
+			expiresIn: maxAge, // hạn 100 ngày (s)
 			role: userInfo["role name"],
 		});
 

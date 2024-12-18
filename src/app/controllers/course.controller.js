@@ -534,7 +534,7 @@ class Course {
 						class="course-description"
 						style="background: #f5f5f5; padding: 15px; border-radius: 5px;"
 						>
-						<h3 style="margin-top: 0;">Course description</h3>
+						<h3 style="margin-top: 0;">Your course description</h3>
 						<p style="color: #666;"><strong>Short description: </strong>${response[0][0][0]?.["short description"]}</p>
 						<p style="color: #666;"><strong>Detail description: </strong>${response[0][0][0]?.["detailed description"]}</p>
 						</div>
