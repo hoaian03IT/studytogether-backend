@@ -10,6 +10,8 @@ const timeLog = (req, res, next) => {
 };
 router.use(timeLog);
 
+router.get("/enrollment-points-competitor/:courseId", [authenticate], EnrollmentController.getEnrollmentPointsCompetitor);
+router.get("/enrollment-progress/:courseId", [authenticate], EnrollmentController.getEnrollmentProgress);
 router.post("/create-enrollment", [authenticate, logUserActivity], EnrollmentController.createEnrollment);
 router.get("/enrollment-information", [authenticate], EnrollmentController.getEnrollmentInfo);
 router.post("/restart", [authenticate, logUserActivity], EnrollmentController.restartEnrollment);

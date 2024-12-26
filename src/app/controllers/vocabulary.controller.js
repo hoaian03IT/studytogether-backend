@@ -32,11 +32,12 @@ class VocabularyControllerClass {
 			const { "user id": userId } = req.user;
 			let { courseId, levelId, word, definition, image, pronunciation, type, transcription } = req.body;
 			if (!courseId) return res.status(404).json({ messageCode: "NOT_FOUND" });
-			if (image) {
+
+			if (image && !validation.url(image)) {
 				image = await uploadImage(image, [word]);
 			}
 
-			if (pronunciation && validation.url(pronunciation)) {
+			if (pronunciation && !validation.url(pronunciation)) {
 				pronunciation = await uploadAudio(pronunciation, [word]);
 			}
 
