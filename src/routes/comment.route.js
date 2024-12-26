@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const CommentController = require("../app/controllers/comment.controller.js");
 const { authenticate } = require("../app/middlewares/authenticate.js");
+const logUserActivity = require("../app/middlewares/user-activity-log.js");
 
 // middleware that is specific to this router
 const timeLog = (req, res, next) => {
@@ -9,6 +10,6 @@ const timeLog = (req, res, next) => {
 };
 router.use(timeLog);
 
-router.post("/feedback", [authenticate], CommentController.createFeedbackComment);
-router.post("/reply", [authenticate], CommentController.createReplyComment);
+router.post("/feedback", [authenticate, logUserActivity], CommentController.createFeedbackComment);
+router.post("/reply", [authenticate, logUserActivity], CommentController.createReplyComment);
 module.exports = router;

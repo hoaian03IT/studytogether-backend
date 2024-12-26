@@ -257,6 +257,26 @@ class User {
 			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
+
+	async getUserDetails(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { id } = req.params;
+
+			if (!id) {
+				return res.status(404).json({ errorCode: "INVALID_USER_ID" });
+			}
+
+			let responseSql = await conn.query("CALL SP_AdminViewDetailedUser(?)", [id]);
+
+			res.status(200).json({ user: responseSql[0][0][0] });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
 }
 
 module.exports = new User();

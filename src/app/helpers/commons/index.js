@@ -17,6 +17,14 @@ class CommonHelpers {
 			res.status(500).json({ errorCode: "INTERNAL_SERVER_ERROR" });
 		}
 	}
+
+	static getISOStringEnrollmentExpiration() {
+		const enrollmentExpiration = Number(process.env.ENROLLMENT_EXPIRATION);
+
+		let expire = new Date().setTime(new Date().getTime() + enrollmentExpiration);
+		expire = new Date(expire).toISOString().replace("Z", "");
+		return expire;
+	}
 }
 
 module.exports = { CommonHelpers };

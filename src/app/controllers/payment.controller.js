@@ -88,7 +88,12 @@ class PaymentController {
 					.then(async (json) => {
 						const { currency_code, value } = json.purchase_units[0]?.payments?.captures[0].amount;
 						await conn.query("CALL SP_CreateTransaction(?,?,?,?,?,?)", [userId, courseId, value, currency_code, "paypal", json?.id]);
-						const responseSql = await conn.query("CALL SP_CreateEnrollment(?,?)", [courseId, userId]);
+
+						const responseSql = await conn.query("CALL SP_CreateEnrollment(?,?,?)", [
+							courseId,
+							userId,
+							CommonHelpers.getISOStringEnrollmentExpiration(),
+						]);
 						res.status(200).json({
 							verify: json,
 							enrollmentId: responseSql[0][0][0]?.["enrollment id"],
@@ -171,7 +176,9 @@ class PaymentController {
 				value = verify?.["vnp_Amount"],
 				orderId = `${verify?.["vnp_TxnRef"]}-${verify?.["vnp_TransactionNo"]}`;
 			await conn.query("CALL SP_CreateTransaction(?,?,?,?,?,?)", [userId, courseId, value, currencyCode, "vnpay", orderId]);
-			await conn.query("CALL SP_CreateEnrollment(?,?)", [courseId, userId]);
+
+			let expire = new Date().setTime(new Date().getTime() + enrollmentExpiration);
+			const responseSql = await conn.query("CALL SP_CreateEnrollment(?,?, ?)", [courseId, userId, CommonHelpers.getISOStringEnrollmentExpiration()]);
 			res.status(200).send("Thanh toán thành công! (Payment successfully)");
 		} catch (error) {
 			CommonHelpers.handleError(error, res);

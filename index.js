@@ -12,7 +12,6 @@ const { createServer } = require("http");
 const { Server } = require("socket.io");
 const { NotificationController } = require("./src/app/controllers/notification.controller");
 const { ReminderController } = require("./src/app/controllers/reminder.controller");
-const { redisConfig } = require("./src/redis/config");
 
 const app = express();
 const port = process.env.SERVER_POST || 4000;
@@ -23,7 +22,7 @@ const corsOptions = {
 	credentials: true,
 	origin: [client_url1, client_url2],
 	methods: ["GET", "PUT", "POST", "DELETE"],
-	// allowedHeaders: "Content-Type,Authorization",
+	allowedHeaders: "Content-Type,Authorization",
 	optionsSuccessStatus: 200,
 	preflightContinue: false,
 };
@@ -48,6 +47,8 @@ app.use(morgan(":method :url :status :response-time ms - :res[content-length]"))
 // compress all responses
 app.use(compression());
 
+app.use(express.json());
+
 // config route
 route(app);
 
@@ -55,7 +56,6 @@ route(app);
 new ReminderController({
 	batchSize: 100,
 });
-app.use(express.json());
 
 app.listen(port, () => {
 	console.log(`The system listening on port ${port}`);

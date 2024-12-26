@@ -10,12 +10,12 @@ class AuthHelper {
 	}
 
 	static async generateTokens(userInfo, conn) {
-		const maxAge = 60 * 60 * 24 * 100; // hạn 100 ngày (ms)
+		const maxAge = 1000 * 60 * 60 * 24 * 100; // hạn 100 ngày (ms)
 		const accessToken = generateAccessToken({ userId: userInfo["user id"], email: userInfo["email"], role: userInfo["role name"] });
 		const refreshToken = generateRefreshToken({
 			userId: userInfo["user id"],
 			email: userInfo["email"],
-			expiresIn: maxAge, // hạn 100 ngày (s)
+			expiresIn: maxAge / 1000, // hạn 100 ngày (s)
 			role: userInfo["role name"],
 		});
 

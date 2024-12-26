@@ -13,7 +13,7 @@ class EnrollmentController {
 				return res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
 			}
 
-			const responseSql = await conn.query("CALL SP_CreateEnrollment(?,?)", [courseId, userId]);
+			const responseSql = await conn.query("CALL SP_CreateEnrollment(?,?,?)", [courseId, userId, CommonHelpers.getISOStringEnrollmentExpiration()]);
 			res.status(200).json({ ...responseSql[0][0][0] });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);

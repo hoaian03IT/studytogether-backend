@@ -281,7 +281,7 @@ class Auth {
 											
 											<p>Please log in with this temporary password and change it immediately in your account settings.</p>
 											
-											<a href="${process.env.CLIENT_URL + process.env.CLIENT_LOGIN_PATHNAME}" class="cta-button">Log In to StudyTogether</a>
+											<a href="${process.env.CLIENT_URL1 + process.env.CLIENT_LOGIN_PATHNAME}" class="cta-button">Log In to StudyTogether</a>
 											
 											<p style="margin-top: 20px;">If you did not request a password reset, please contact our support team.</p>
 										</div>
@@ -360,11 +360,10 @@ class Auth {
 			const { data } = await oauth2.userinfo.get();
 
 			const { email, given_name, family_name, picture, id: sub } = data;
-
 			// check nếu đã có tài khoản...
 			conn.query("CALL SP_GetUserAccountByGoogleId(?,?)", [email, sub])
-				.then(async ([response]) => {
-					const userInfo = response[0][0];
+				.then(async (response) => {
+					const userInfo = response[0][0][0];
 					const { accessToken, refreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
 
 					const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
@@ -378,7 +377,7 @@ class Auth {
 						.json({ ...rest, message: "login" });
 				})
 				.catch(async (err) => {
-					if (err.sqlState >= 45000) return res.status(401).json({ messageCode: err.sqlMessage });
+					// if (err.sqlState >= 45000) return res.status(401).json({ messageCode: err.sqlMessage });
 					// trường hợp procedure báo lỗi không có tài khoản thì tạo
 					if (!role) return res.status(401).json({ errorCode: "REGISTER_FIRST" });
 

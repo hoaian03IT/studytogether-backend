@@ -3,6 +3,7 @@ const { pool } = require("../../db/connectDB.js");
 const { uploadImage } = require("../../utils/uploadToCloud");
 const { CommonHelpers } = require("../helpers/commons");
 const { transporter } = require("../../config/nodemailer.js");
+const { redisConfig } = require("../../redis/config.js");
 const cloudinary = require("cloudinary").v2;
 
 class Course {
@@ -73,49 +74,40 @@ class Course {
 			conn = await pool.getConnection();
 			const { "course-id": courseId } = req.query;
 			const { "user id": userId } = req.user;
-			conn.query("CALL SP_GetCourseComment(?,?)", [courseId, userId])
-				.then((response) => {
-					let comments = new Map();
-					let array = response[0][0];
-					// chia cac comment thanh 2 loai: feedback va replies
-					for (let item of array) {
-						if (item["reply comment id"] === null) {
-							comments.set(item["comment id"], {
-								commentId: item["comment id"],
-								comment: item["comment"],
-								firstName: item["first name"],
-								lastName: item["last name"],
-								username: item["username"],
-								avatarImage: item["avatar image"],
-								createdAt: item["created at"],
-								rate: item["rate"],
-								role: item["role name"],
-								replies: [],
-							});
-						} else {
-							comments.get(item["reply comment id"]).replies.push({
-								commentId: item["comment id"],
-								comment: item["comment"],
-								firstName: item["first name"],
-								lastName: item["last name"],
-								username: item["username"],
-								avatarImage: item["avatar image"],
-								createdAt: item["created at"],
-								rate: item["rate"],
-								role: item["role name"],
-							});
-						}
-					}
-					let commentArray = [...comments.values()];
-					res.status(200).json(commentArray);
-				})
-				.catch((error) => {
-					if (error.sqlState == 45000) {
-						res.status(404).json({ errorCode: "COURSE_NOT_FOUND" });
-					} else {
-						res.status(500).json({ message: error.message });
-					}
-				});
+			let response = await conn.query("CALL SP_GetCourseComment(?,?)", [courseId, userId]);
+			let comments = new Map();
+			let array = response[0][0];
+			// chia cac comment thanh 2 loai: feedback va replies
+			for (let item of array) {
+				if (item["reply comment id"] === null) {
+					comments.set(item["comment id"], {
+						commentId: item["comment id"],
+						comment: item["comment"],
+						firstName: item["first name"],
+						lastName: item["last name"],
+						username: item["username"],
+						avatarImage: item["avatar image"],
+						createdAt: item["created at"],
+						rate: item["rate"],
+						role: item["role name"],
+						replies: [],
+					});
+				} else {
+					comments.get(item["reply comment id"]).replies.push({
+						commentId: item["comment id"],
+						comment: item["comment"],
+						firstName: item["first name"],
+						lastName: item["last name"],
+						username: item["username"],
+						avatarImage: item["avatar image"],
+						createdAt: item["created at"],
+						rate: item["rate"],
+						role: item["role name"],
+					});
+				}
+			}
+			let commentArray = [...comments.values()];
+			res.status(200).json(commentArray);
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {
@@ -351,6 +343,15 @@ class Course {
 				np: nPage = 1,
 			} = req.query; // type=normal || advance
 			let responseSql;
+
+			let result = await redisConfig.get(
+				`searchcourse:${textSearch}-${targetLanguageId}-${sourceLanguageId}-${courseLevelId}-${minPrice}-${maxPrice}-${nLimit}-${nPage}`,
+			);
+
+			if (result) {
+				return res.status(200).json(JSON.parse(result));
+			}
+
 			if (type === "advance") {
 				responseSql = await conn.query("CALL SP_SearchCourseAdvance(?,?,?,?,?,?,?,?)", [
 					textSearch,
@@ -365,6 +366,13 @@ class Course {
 			} else {
 				responseSql = await conn.query("CALL SP_SearchNameCourse(?,?,?)", [textSearch, nLimit, nPage]);
 			}
+
+			redisConfig.set(
+				`searchcourse:${textSearch}-${targetLanguageId}-${sourceLanguageId}-${courseLevelId}-${minPrice}-${maxPrice}-${nLimit}-${nPage}`,
+				JSON.stringify({ courses: responseSql[0][0], totalPages: responseSql[0][1][0]?.["total pages"], type }),
+				"EX",
+				60, // 60s
+			);
 
 			res.status(200).json({ courses: responseSql[0][0], totalPages: responseSql[0][1][0]?.["total pages"], type });
 		} catch (error) {
@@ -563,6 +571,34 @@ class Course {
 			});
 
 			res.status(200).json({ courseId: courseId });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
+
+	async getUserOwnedCourse(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { userId } = req.params;
+			let sqlResponse = await conn.query("CALL SP_AdminViewCourseOwner(?)", [userId]);
+			res.status(200).json({ courses: sqlResponse[0][0] });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
+
+	async getUserEnrolledCourse(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { userId } = req.params;
+			let sqlResponse = await conn.query("CALL SP_AdminViewUserCourseEnrollment(?)", [userId]);
+			res.status(200).json({ courses: sqlResponse[0][0] });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {
