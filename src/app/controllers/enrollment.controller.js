@@ -112,7 +112,7 @@ class EnrollmentController {
 					...responseSql0[0][0][0],
 					learntWords: responseSql2[0][0],
 					preparedToLearnWords: responseSql3[0][0],
-					numberLearntWords: responseSql1[0][0][0]?.["total words"],
+					numberTotalWords: responseSql1[0][0][0]?.["total words"],
 					numberLearntWords: responseSql1[0][0][0]?.["learnt words"],
 				},
 			});
