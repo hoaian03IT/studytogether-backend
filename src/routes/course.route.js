@@ -11,8 +11,6 @@ const timeLog = (req, res, next) => {
 };
 router.use(timeLog);
 
-// log user activity
-
 router.get("/overview", [authenticate], CourseController.getCourseInformation);
 router.get("/comment", [authenticate], CourseController.getCourseComment);
 router.get("/content", [authenticate], CourseController.getCourseContent);
@@ -25,6 +23,7 @@ router.post("/create", [authenticate, logUserActivity], CourseController.createC
 router.post("/update", [authenticate, logUserActivity], CourseController.updateCourseInformation);
 router.delete("/destroy/:courseId", [authenticate, logUserActivity], CourseController.destroyOwnCourse);
 router.post("/price-update", [authenticate, verifyRoleAdminTeacher, logUserActivity], CourseController.updateCoursePrice);
+router.get("/revenue/:courseId", [authenticate, verifyRoleAdminTeacher], CourseController.getCourseRevenue);
 
 // admin
 router.get("/admin/all", [authenticate, verifyAdmin], CourseController.listCourses);

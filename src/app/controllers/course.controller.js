@@ -605,6 +605,20 @@ class Course {
 			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
+
+	async getCourseRevenue(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { courseId } = req.params;
+			let sqlResponse = await conn.query("CALL SP_GetCourseRevenue(?)", [courseId]);
+			res.status(200).json({ list: sqlResponse[0][0] });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
 }
 
 module.exports = new Course();

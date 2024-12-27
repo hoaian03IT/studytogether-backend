@@ -10,6 +10,7 @@ const timeLog = (req, res, next) => {
 };
 router.use(timeLog);
 
+router.get("/rate/:courseId", CommentController.getCourseRates);
 router.post("/feedback", [authenticate, logUserActivity], CommentController.createFeedbackComment);
 router.post("/reply", [authenticate, logUserActivity], CommentController.createReplyComment);
 module.exports = router;

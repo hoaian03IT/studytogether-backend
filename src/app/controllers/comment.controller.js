@@ -10,6 +10,7 @@ class CommentController {
 			const { courseId, comment, rate } = req.body;
 
 			let response = await conn.query("CALL SP_CreateFeedbackComment(?,?,?,?)", [courseId, userId, rate, comment]);
+
 			res.status(200).json({
 				messageCode: "FEEDBACK_SUCCESS",
 				commentId: response[0][0][0]?.["comment id"],
@@ -50,6 +51,39 @@ class CommentController {
 				replyCommentId: response[0][0][0]?.["reply comment id"],
 				rate: response[0][0][0]?.["rate"],
 				role: response[0][0][0]?.["role name"],
+			});
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
+
+	async getCourseRates(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { courseId } = req.params;
+
+			let response = await conn.query("CALL SP_GetCourseRate(?)", [courseId]);
+
+			const courseRates = {
+				1: 0,
+				2: 0,
+				3: 0,
+				4: 0,
+				5: 0,
+			};
+
+			for (let rate of response[0][1]) {
+				courseRates[Math.floor(rate?.rate)]++;
+			}
+
+			res.status(200).json({
+				averageRate: response[0][0][0]?.["avg rate"],
+				numberRates: response[0][0][0]?.["number rates"],
+				rates: courseRates,
+				numberComments: response[0][2][0]?.["total comments"],
 			});
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
