@@ -84,25 +84,33 @@ class Auth {
 			// posix: chuyển thành dấu "/" thay vì "\"
 			const imagePath = `${process.env.SERVER_URL}/static/default-avatar/default-avatar-0.jpg`;
 
-			conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?,?)", [email, hashedPassword, username, imagePath, role, null, null, null, null])
-				.then(async ([response]) => {
-					const userInfo = response[0][0];
+			const response = await conn.query("CALL SP_CreateUserAccount(?,?,?,?,?,?,?,?,?)", [
+				email,
+				hashedPassword,
+				username,
+				imagePath,
+				role,
+				null,
+				null,
+				null,
+				null,
+			]);
+			const userInfo = response[0][0][0];
 
-					const { accessToken, refreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
+			// tao e wallet
+			await AuthHelper.createEWallet({ role: userInfo?.["role name"], userId: userInfo?.["user id"] }, conn);
 
-					const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
+			const { accessToken, refreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
 
-					res.cookie("refresh_token", refreshToken, {
-						maxAge: maxAge,
-						httpOnly: true,
-						secure: true,
-					})
-						.status(200)
-						.json({ ...rest, messageCode: "REGISTER_SUCCESS" });
-				})
-				.catch((err) => {
-					CommonHelpers.handleError(err, res);
-				});
+			const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
+
+			res.cookie("refresh_token", refreshToken, {
+				maxAge: maxAge,
+				httpOnly: true,
+				secure: true,
+			})
+				.status(200)
+				.json({ ...rest, messageCode: "REGISTER_SUCCESS" });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {
@@ -404,6 +412,9 @@ class Auth {
 						.then(async ([response]) => {
 							const userInfo = response[0][0];
 
+							// tao e wallet
+							await AuthHelper.createEWallet({ role: userInfo?.["role name"], userId: userInfo?.["user id"] }, conn);
+
 							const { accessToken, refreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
 
 							const { hashpassword, "user id": id, ...rest } = { ...userInfo, token: accessToken };
@@ -482,6 +493,9 @@ class Auth {
 					])
 						.then(async ([response]) => {
 							const userInfo = response[0][0];
+
+							// tao e wallet
+							await AuthHelper.createEWallet({ role: userInfo?.["role name"], userId: userInfo?.["user id"] }, conn);
 
 							const { accessToken, refreshToken, maxAge } = await AuthHelper.generateTokens(userInfo, conn);
 

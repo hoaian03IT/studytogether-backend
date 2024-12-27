@@ -31,6 +31,12 @@ class AuthHelper {
 		const hash = crypto.createHash("md5").update(email).digest("hex").slice(0, 6); // Take first 6 characters of the hash
 		return `${email.split("@")[0]}_${hash}`;
 	}
+
+	static async createEWallet({ role, userId }, conn) {
+		if (role === "admin" || role === "teacher") {
+			await conn.query("CALL SP_CreateEWallet(?)", [userId]);
+		}
+	}
 }
 
 module.exports = { AuthHelper };

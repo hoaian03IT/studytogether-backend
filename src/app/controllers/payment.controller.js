@@ -4,6 +4,7 @@ const { vnpay } = require("../../payments/vnpay/config");
 const { dateFormat, ProductCode, VnpLocale, VerifyReturnUrl } = require("vnpay");
 const axios = require("axios");
 const { CommonHelpers } = require("../helpers/commons");
+const { PaymentHelper } = require("../helpers/payment.helper.js");
 
 async function getCoursePrices(connection, courseId, userId) {
 	let responsePrice = await connection.query("CALL SP_GetCoursePrice(?,?)", [courseId, userId]);
@@ -27,11 +28,12 @@ class PaymentController {
 				return res.status(406).json({ errorCode: "COURSE_ENROLLED" });
 			}
 
-			const percentageFee = 0.029; // 2.9% PayPal fee
 			let access_token = await get_access_token();
 			if (access_token) {
+				const percentageFee = Number(process.env.PAYPAL_FEE);
+				const fixedFee = Number(process.env.PAYPAL_FIXED_FEE);
 				let { handledPrice } = await getCoursePrices(conn, courseId, userId);
-				handledPrice = handledPrice + handledPrice * percentageFee;
+				handledPrice = (handledPrice + fixedFee) / (1 - percentageFee);
 
 				let order_data_json = {
 					intent: intent.toUpperCase(),
@@ -84,16 +86,34 @@ class PaymentController {
 						Authorization: `Bearer ${access_token}`,
 					},
 				})
-					.then((res) => res.json())
+					.then((res) => {
+						return res.json();
+					})
 					.then(async (json) => {
-						const { currency_code, value } = json.purchase_units[0]?.payments?.captures[0].amount;
-						await conn.query("CALL SP_CreateTransaction(?,?,?,?,?,?)", [userId, courseId, value, currency_code, "paypal", json?.id]);
+						const { currency_code, value } = json.purchase_units[0]?.payments?.captures[0].seller_receivable_breakdown?.net_amount;
+
+						const systemAccountId = process.env.SYSTEM_ACCOUNT_ID;
+						const { commissionMoney, commissionRate, retentionMoney } = await PaymentHelper.paymentAllocation(value, currency_code);
+
+						await conn.query("CALL SP_CreateTransaction(?,?,?,?,?,?,?,?)", [
+							userId,
+							courseId,
+							value,
+							currency_code,
+							"paypal",
+							json?.id,
+							"purchase-course",
+							commissionRate,
+						]);
+
+						await conn.query("CALL SP_DivideMoney(?,?,?,?)", [systemAccountId, courseId, commissionMoney, retentionMoney]);
 
 						const responseSql = await conn.query("CALL SP_CreateEnrollment(?,?,?)", [
 							courseId,
 							userId,
 							CommonHelpers.getISOStringEnrollmentExpiration(),
 						]);
+
 						res.status(200).json({
 							verify: json,
 							enrollmentId: responseSql[0][0][0]?.["enrollment id"],
@@ -132,6 +152,7 @@ class PaymentController {
 			let handledVNDPrice = VNDPerDollar * USDPrice;
 			// ===========
 
+			// set expire transaction
 			const expire = new Date();
 			expire.setTime(expire.getTime() + 1000 * 60 * 10); // 10 mins
 
@@ -175,9 +196,23 @@ class PaymentController {
 			let currencyCode = "VND",
 				value = verify?.["vnp_Amount"],
 				orderId = `${verify?.["vnp_TxnRef"]}-${verify?.["vnp_TransactionNo"]}`;
-			await conn.query("CALL SP_CreateTransaction(?,?,?,?,?,?)", [userId, courseId, value, currencyCode, "vnpay", orderId]);
 
-			let expire = new Date().setTime(new Date().getTime() + enrollmentExpiration);
+			const systemAccountId = process.env.SYSTEM_ACCOUNT_ID;
+			const { commissionMoney, commissionRate, retentionMoney } = await PaymentHelper.paymentAllocation(value, currencyCode);
+
+			await conn.query("CALL SP_CreateTransaction(?,?,?,?,?,?,?,?)", [
+				userId,
+				courseId,
+				value,
+				currencyCode,
+				"vnpay",
+				orderId,
+				"purchase-course",
+				commissionRate,
+			]);
+
+			await conn.query("CALL SP_DivideMoney(?,?,?,?)", [systemAccountId, courseId, commissionMoney, retentionMoney]);
+
 			const responseSql = await conn.query("CALL SP_CreateEnrollment(?,?, ?)", [courseId, userId, CommonHelpers.getISOStringEnrollmentExpiration()]);
 			res.status(200).send("Thanh toán thành công! (Payment successfully)");
 		} catch (error) {

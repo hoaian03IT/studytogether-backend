@@ -235,7 +235,7 @@ class Course {
 			const { "user id": userId } = req.user;
 
 			const responseSQl = await conn.query("CALL SP_GetCoursePrice(?,?)", [courseId, userId]);
-			res.status(200).json({ ...responseSQl[0][0][0] });
+			res.status(200).json({ ...responseSQl[0][0][0], tradeDiscount: process.env.COMMISSION_RATE || 0.3 });
 		} catch (error) {
 			CommonHelpers.handleError(error, res);
 		} finally {
