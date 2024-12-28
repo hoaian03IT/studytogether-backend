@@ -619,6 +619,91 @@ class Course {
 			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
+
+	async getSuggestionCourse(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			// const { "user id": userId } = req.user;
+			const { li: limit = 8, tag, targetLanguage = null } = req.query;
+
+			let courses = [];
+
+			let results = await redisConfig.get(`suggestioncourse:${tag}}`);
+			if (results) {
+				courses = JSON.parse(results);
+			} else {
+				let response = await conn.query("CALL SP_CourseSuggestion(?,?,?)", [tag, targetLanguage, limit]);
+				courses = courses.concat(response[0][0]);
+				await redisConfig.set(`suggestioncourse:${tag}}`, JSON.stringify(courses), "EX", 60 * 30);
+			}
+
+			if (courses.length < limit) {
+				let results = await redisConfig.get(`suggestioncourse:${tag}}:${userId}`);
+
+				if (results) {
+					courses = courses.concat(JSON.parse(results));
+				} else {
+					let response = await conn.query("CALL SP_GetTagOfPopularCourseOfUser(?)", [userId]);
+					for (const tag of response[0][0]) {
+						let response1 = await conn.query("CALL SP_CourseSuggestion(?,?,?)", [tag, targetLanguage, limit]);
+						courses = courses.concat(response1[0][0]);
+					}
+					await redisConfig.set(`suggestioncourse:${tag}}:${userId}`, JSON.stringify(courses), "EX", 60 * 30);
+				}
+			}
+
+			res.status(200).json({ courses });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
+
+	async getMostPopularCourse(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { li: limit = 10 } = req.query;
+
+			let results = await redisConfig.get(`mostpopularcourse:${limit}`);
+			if (results) {
+				return res.status(200).json({ courses: JSON.parse(results) });
+			}
+
+			let response = await conn.query("CALL SP_GetMostPopularCourse(?)", [limit]);
+			await redisConfig.set(`mostpopularcourse:${limit}`, JSON.stringify(response[0][0]), "EX", 60 * 30);
+
+			res.status(200).json({ courses: response[0][0] });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
+
+	async getMostDiscountCourse(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { li: limit = 10 } = req.query;
+
+			let results = await redisConfig.get(`mostdiscountcourse:${limit}`);
+			if (results) {
+				return res.status(200).json({ courses: JSON.parse(results) });
+			}
+
+			let response = await conn.query("CALL SP_GetMostDiscountCourse(?)", [limit]);
+			await redisConfig.set(`mostdiscountcourse:${limit}`, JSON.stringify(response[0][0]), "EX", 60 * 30);
+
+			res.status(200).json({ courses: response[0][0] });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
 }
 
 module.exports = new Course();

@@ -24,6 +24,9 @@ router.post("/update", [authenticate, logUserActivity], CourseController.updateC
 router.delete("/destroy/:courseId", [authenticate, logUserActivity], CourseController.destroyOwnCourse);
 router.post("/price-update", [authenticate, verifyRoleAdminTeacher, logUserActivity], CourseController.updateCoursePrice);
 router.get("/revenue/:courseId", [authenticate, verifyRoleAdminTeacher], CourseController.getCourseRevenue);
+router.get("/suggestion", [authenticate], CourseController.getSuggestionCourse);
+router.get("/most-popular", CourseController.getMostPopularCourse);
+router.get("/most-discount", CourseController.getMostDiscountCourse);
 
 // admin
 router.get("/admin/all", [authenticate, verifyAdmin], CourseController.listCourses);
