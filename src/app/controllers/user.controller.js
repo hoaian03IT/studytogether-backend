@@ -277,6 +277,49 @@ class User {
 			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
+
+	async getUserStreak(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { "user id": userId } = req.user;
+
+			let responseSql = await conn.query("CALL SP_GetStreak(?)", [userId]);
+			console.log(responseSql[0][0]);
+
+			res.status(200).json({ streakInfo: responseSql[0][0][0] });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
+
+	async getUserStatistics(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { "user id": userId } = req.user;
+
+			let responseSql = await conn.query("CALL SP_StatisticsWords(?)", [userId]);
+
+			res.status(200).json({
+				wordStatistics: {
+					byLanguage: responseSql[0][0],
+					mostConfusedWords: responseSql[0][1],
+					wordsLearnedInMonth: responseSql[0][2],
+				},
+				pointStatistic: responseSql[0][3][0],
+				courseStatistic: {
+					numberEnrolledCourse: responseSql[0][4][0]?.["total enrolled courses"],
+				},
+			});
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
 }
 
 module.exports = new User();

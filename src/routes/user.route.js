@@ -14,6 +14,8 @@ router.use(timeLog);
 router.get("/me", [authenticate], UserController.getUserInfo);
 router.post("/update-info", [authenticate, logUserActivity], UserController.updateUserInfo);
 router.get("/exists-username", UserController.checkExistUsername);
+router.get("/streak", [authenticate], UserController.getUserStreak);
+router.get("/statistics", [authenticate], UserController.getUserStatistics);
 
 // admin
 router.get("/admin/list-users", [authenticate, verifyAdmin], UserController.getUserList);
