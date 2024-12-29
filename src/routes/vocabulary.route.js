@@ -14,5 +14,7 @@ router.get("/all/:courseId", [authenticate], VocabularyController.getAllVocabula
 router.post("/new", [authenticate, logUserActivity], VocabularyController.addNewWord);
 router.post("/edit", [authenticate, logUserActivity], VocabularyController.updateWord);
 router.delete("/delete", [authenticate, logUserActivity], VocabularyController.deleteWord);
+router.get("/learnt-words/:enrollmentId", [authenticate], VocabularyController.getLearntWordsByEnrollment);
+router.get("/marked-words/:enrollmentId", [authenticate], VocabularyController.getMarkedWordsByEnrollment);
 
 module.exports = router;

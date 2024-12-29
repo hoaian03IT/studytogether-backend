@@ -112,6 +112,38 @@ class VocabularyControllerClass {
 			await CommonHelpers.safeRelease(pool, conn);
 		}
 	}
+
+	async getLearntWordsByEnrollment(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { enrollmentId } = req.params;
+
+			const response = await conn.query("CALL SP_GetLearntWords(?)", [enrollmentId]);
+
+			res.status(200).json({ words: response[0][0] });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
+
+	async getMarkedWordsByEnrollment(req, res) {
+		let conn;
+		try {
+			conn = await pool.getConnection();
+			const { enrollmentId } = req.params;
+
+			const response = await conn.query("CALL SP_GetMarkedWordEnrollment(?)", [enrollmentId]);
+
+			res.status(200).json({ words: response[0][0] });
+		} catch (error) {
+			CommonHelpers.handleError(error, res);
+		} finally {
+			await CommonHelpers.safeRelease(pool, conn);
+		}
+	}
 }
 
 const VocabularyController = new VocabularyControllerClass();
