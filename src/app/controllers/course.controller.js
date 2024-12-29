@@ -624,18 +624,22 @@ class Course {
 		let conn;
 		try {
 			conn = await pool.getConnection();
-			// const { "user id": userId } = req.user;
-			const { li: limit = 8, tag, targetLanguage = null } = req.query;
+			const { "user id": userId } = req.user;
+			const { li: limit = 8, tag = "", targetLanguage = null } = req.query;
 
 			let courses = [];
 
-			let results = await redisConfig.get(`suggestioncourse:${tag}}`);
-			if (results) {
-				courses = JSON.parse(results);
-			} else {
-				let response = await conn.query("CALL SP_CourseSuggestion(?,?,?)", [tag, targetLanguage, limit]);
-				courses = courses.concat(response[0][0]);
-				await redisConfig.set(`suggestioncourse:${tag}}`, JSON.stringify(courses), "EX", 60 * 30);
+			const tags = tag.split(" ");
+
+			for (let splittedTag of tags) {
+				let results = await redisConfig.get(`suggestioncourse:${splittedTag}}`);
+				if (results) {
+					courses = courses.concat(JSON.parse(results));
+				} else {
+					let response = await conn.query("CALL SP_CourseSuggestion(?,?,?)", [splittedTag, targetLanguage, limit]);
+					courses = courses.concat(response[0][0]);
+					await redisConfig.set(`suggestioncourse:${splittedTag}}`, JSON.stringify(courses), "EX", 60 * 30);
+				}
 			}
 
 			if (courses.length < limit) {
@@ -645,8 +649,8 @@ class Course {
 					courses = courses.concat(JSON.parse(results));
 				} else {
 					let response = await conn.query("CALL SP_GetTagOfPopularCourseOfUser(?)", [userId]);
-					for (const tag of response[0][0]) {
-						let response1 = await conn.query("CALL SP_CourseSuggestion(?,?,?)", [tag, targetLanguage, limit]);
+					for (const item of response[0][0]) {
+						let response1 = await conn.query("CALL SP_CourseSuggestion(?,?,?)", [item?.["tag"], targetLanguage, limit]);
 						courses = courses.concat(response1[0][0]);
 					}
 					await redisConfig.set(`suggestioncourse:${tag}}:${userId}`, JSON.stringify(courses), "EX", 60 * 30);

@@ -40,39 +40,42 @@ class LearnProcessHelper {
 		];
 
 		// Optional screens
-		if (optionalScreen && word.pronunciation) {
-			screens.push(
-				{
-					template: "multiple-choice",
-					wordId: word?.["word id"],
-					question: "",
-					answer: word.word,
-					options: wordOptions,
-					pronunciation: word.pronunciation,
-					image: word.image,
-					duration: timer ? 6 : null,
-				},
-				{
-					template: "text",
-					wordId: word?.["word id"],
-					question: "",
-					answer: word.word,
-					pronunciation: word.pronunciation,
-					image: word.image,
-					duration: timer ? 10 : null,
-				},
-				{
-					template: "definition",
-					wordId: word?.["word id"],
-					word: word.word,
-					definition: word.definition,
-					pronunciation: word.pronunciation,
-					transcript: word.transcription,
-					image: word.image,
-					type: word.type,
-					examples,
-				},
-			);
+		if (optionalScreen) {
+			screens.push({
+				template: "definition",
+				wordId: word?.["word id"],
+				word: word.word,
+				definition: word.definition,
+				pronunciation: word.pronunciation,
+				transcript: word.transcription,
+				image: word.image,
+				type: word.type,
+				examples,
+			});
+
+			if (word?.pronunciation) {
+				screens.push(
+					{
+						template: "text",
+						wordId: word?.["word id"],
+						question: "",
+						answer: word.word,
+						pronunciation: word.pronunciation,
+						image: word.image,
+						duration: timer ? 10 : null,
+					},
+					{
+						template: "multiple-choice",
+						wordId: word?.["word id"],
+						question: "",
+						answer: word.word,
+						options: wordOptions,
+						pronunciation: word.pronunciation,
+						image: word.image,
+						duration: timer ? 6 : null,
+					},
+				);
+			}
 		}
 
 		return screens;

@@ -118,7 +118,7 @@ class ReminderController {
 									<p>Our community of learners is here to support you and help you reach your goals. Open the app to get started - there's so much waiting for you!</p>
 								</div>
 								<div class="cta">
-									<a href="${process.env.CLIENT_URL}/list-course">Open StudyTogether</a>
+									<a href="${process.env.CLIENT_URL1}/list-course">Open StudyTogether</a>
 								</div>
 							</div>
 						</body>
@@ -159,7 +159,7 @@ class ReminderController {
 						<h1>Don't Break Your StudyTogether Streak! 🔥</h1>
 						<div class="streak-number">${currentStreak > 1 ? currentStreak + " Days" : currentStreak + " Day"}</div>
 						<p class="motivational-text">You're on a roll! Keep learning and growing with StudyTogether.</p>
-						<a href="${process.env.CLIENT_URL}" class="action-button">Go to Website now!</a>
+						<a href="${process.env.CLIENT_URL1}" class="action-button">Go to Website now!</a>
 						<p>Your daily commitment is making a difference!</p>
 						</div>
 						</body>
@@ -208,12 +208,12 @@ class ReminderController {
 	 * 					year (*)
 	 */
 	scheduleReminderJob() {
-		schedule.scheduleJob("05 10 * * *", async () => {
+		schedule.scheduleJob("51 13 * * *", async () => {
 			console.log("Starting daily reminder job...");
 			await this.processAllUsers();
 		});
 		// lich reset streak ve 0 neu nhu day > 1
-		schedule.scheduleJob("0 0 * * *", async () => {
+		schedule.scheduleJob("45 13 * * *", async () => {
 			let conn;
 			try {
 				conn = await pool.getConnection();

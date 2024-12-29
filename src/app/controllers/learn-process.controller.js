@@ -18,7 +18,7 @@ class LearnProcessController {
 				if (!levelNames.includes(item["level name"])) {
 					levelNames.push(item["level name"]);
 				}
-				const [[examples, learnt, notLearn]] = await conn.query("CALL SP_GetRelatedWords(?)", [item["word id"]]);
+				const [[examples, learnt, notLearn]] = await conn.query("CALL SP_GetRelatedWords(?,?)", [item["word id"], item["course id"]]);
 				const screens = LearnProcessHelper.generateScreens(item, examples, learnt, notLearn, true);
 				return {
 					wordId: item["word id"],
@@ -80,7 +80,7 @@ class LearnProcessController {
 			const responseSql = await conn.query("CALL SP_SelectWordSpeedReview(?,?)", [courseId, userId]);
 
 			const returns = responseSql[0][0].map(async (item) => {
-				const [[examples, learnt, notLearn]] = await conn.query("CALL SP_GetRelatedWords(?)", [item["word id"]]);
+				const [[examples, learnt, notLearn]] = await conn.query("CALL SP_GetRelatedWords(?,?)", [item["word id"], item["course id"]]);
 				const screens = LearnProcessHelper.generateScreens(item, examples, learnt, notLearn, false, true);
 
 				return {
